@@ -27,6 +27,40 @@ class JugadoresRepository {
     return data ? new Jugador(data) : null
   }
 
+
+
+  async crearJugadorAsync(
+  idusuario,
+  nombre,
+  apellido,
+  iddeporte,
+  telefono,
+  fechanacimiento,
+  ubicacion,
+  genero,
+  fotoperfil
+) {
+  const { data, error } = await supabase
+    .from('jugadores')
+    .insert({
+      idusuario,
+      nombre,
+      apellido,
+      iddeporte,
+      telefono,
+      fechanacimiento,
+      ubicacion,
+      genero,
+      fotoperfil:null
+    })
+    .select()
+    .single()
+
+  if (error) throw new Error(error.message)
+
+  return new Jugador(data)
+}
+
 }
 
 export default JugadoresRepository

@@ -1,9 +1,11 @@
 import JugadoresRepository from '../repositories/jugadores-repository.js'
+import UsuariosRepository from '../repositories/usuarios-repository.js'
 
 class JugadoresService {
 
   constructor() {
     this.repository = new JugadoresRepository()
+    this.usuariosRepository = new UsuariosRepository()
   }
 
   async getAllAsync() {
@@ -18,6 +20,28 @@ class JugadoresService {
     return jugador
   }
 
+   async registrarJugadorAsync(data) {
+
+  const usuario = await this.usuariosRepository.crearUsuarioAsync(
+    data.email,
+    data.contraseña,
+    'jugador'
+  )
+
+  const jugador = await this.repository.crearJugadorAsync(
+    usuario.idusuario,
+    data.nombre,
+    data.apellido,
+    data.iddeporte,
+    data.telefono,
+    data.fechanacimiento,
+    data.ubicacion,
+    data.genero,
+    data.fotoperfil
+  )
+
+  return jugador
+}
 }
 
 export default JugadoresService

@@ -25,4 +25,18 @@ router.get('/:id', async (req, res) => {
   }
 })
 
+router.post('/registro', async (req, res) => {
+  try {
+
+    const jugador = await service.registrarJugadorAsync(req.body)
+
+    res.status(StatusCodes.CREATED).json(jugador)
+
+  } catch (error) {
+    res
+      .status(error.status || StatusCodes.INTERNAL_SERVER_ERROR)
+      .json({ error: error.message })
+  }
+})
+
 export default router
