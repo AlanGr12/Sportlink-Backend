@@ -1,12 +1,11 @@
 import EntrenadoresRepository from '../repositories/entrenadores-repository.js'
-import EntrenadoresXDeportesRepository from '../repositories/entrenadoresxdeportes-repository.js'
 import UsuariosRepository from '../repositories/usuarios-repository.js'
-
 
 class EntrenadoresService {
 
   constructor() {
     this.repository = new EntrenadoresRepository()
+    this.usuariosRepository = new UsuariosRepository()
   }
 
   async getAllAsync() {
@@ -16,12 +15,17 @@ class EntrenadoresService {
   async getByIdAsync(id) {
     const entrenador = await this.repository.getByIdAsync(id)
 
-    if (!entrenador) throw { status: 404, message: `No se encontró el entrenador con id ${id}` }
+    if (!entrenador) {
+      throw {
+        status: 404,
+        message: `No se encontró el entrenador con id ${id}`
+      }
+    }
 
     return entrenador
   }
 
-   async registrarEntrenadorAsync(data) {
+  async registrarEntrenadorAsync(data) {
 
     const usuario = await this.usuariosRepository.crearUsuarioAsync(
       data.email,
@@ -33,7 +37,6 @@ class EntrenadoresService {
       usuario.idusuario,
       data.nombre,
       data.apellido,
-      data.iddeporte,
       data.telefono,
       data.fechanacimiento,
       data.ubicacion,
@@ -45,10 +48,13 @@ class EntrenadoresService {
       data.cv
     )
 
+    await this.repository.asignarDeporteAsync(
+      entrenador.identrenador,
+      data.iddeporte
+    )
+
     return entrenador
   }
-
-
 
 }
 

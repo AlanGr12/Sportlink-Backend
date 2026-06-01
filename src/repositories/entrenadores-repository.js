@@ -43,6 +43,57 @@ class EntrenadoresRepository {
     })
   }
 
+ async crearEntrenadorAsync(
+  idusuario,
+  nombre,
+  apellido,
+  telefono,
+  fechanacimiento,
+  ubicacion,
+  genero,
+  tieneclub,
+  experiencia,
+  titulo,
+  fotoperfil,
+  cv
+) {
+
+  const { data, error } = await supabase
+    .from('entrenadores')
+    .insert({
+      idusuario,
+      nombre,
+      apellido,
+      telefono,
+      fechanacimiento,
+      ubicacion,
+      genero,
+      tieneclub,
+      experiencia,
+      titulo,
+      fotoperfil,
+      cv
+    })
+    .select()
+    .single()
+
+  if (error) throw new Error(error.message)
+
+  return new Entrenador(data)
+}
+
+async asignarDeporteAsync(identrenador, iddeporte) {
+  const { error } = await supabase
+    .from('entrenadoresxdeportes')
+    .insert({
+      identrenador,
+      iddeporte
+    })
+
+  if (error) throw new Error(error.message)
+
+}
+
 }
 
 export default EntrenadoresRepository
