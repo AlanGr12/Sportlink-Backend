@@ -1,4 +1,7 @@
 import EntrenadoresRepository from '../repositories/entrenadores-repository.js'
+import EntrenadoresXDeportesRepository from '../repositories/entrenadoresxdeportes-repository.js'
+import UsuariosRepository from '../repositories/usuarios-repository.js'
+
 
 class EntrenadoresService {
 
@@ -17,6 +20,35 @@ class EntrenadoresService {
 
     return entrenador
   }
+
+   async registrarEntrenadorAsync(data) {
+
+    const usuario = await this.usuariosRepository.crearUsuarioAsync(
+      data.email,
+      data.contraseña,
+      'entrenador'
+    )
+
+    const entrenador = await this.repository.crearEntrenadorAsync(
+      usuario.idusuario,
+      data.nombre,
+      data.apellido,
+      data.iddeporte,
+      data.telefono,
+      data.fechanacimiento,
+      data.ubicacion,
+      data.genero,
+      data.tieneclub,
+      data.experiencia,
+      data.titulo,
+      data.fotoperfil,
+      data.cv
+    )
+
+    return entrenador
+  }
+
+
 
 }
 
