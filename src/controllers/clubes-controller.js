@@ -1,9 +1,22 @@
 import { Router } from 'express'
 import { StatusCodes } from 'http-status-codes'
 import ClubesService from '../services/clubes-service.js'
+import multer from 'multer'
+
 
 const router = Router()
 const service = new ClubesService()
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const permitidos = ['image/jpeg', 'image/png', 'image/webp']
+    permitidos.includes(file.mimetype)
+      ? cb(null, true)
+      : cb(new Error('Solo se permiten imágenes JPG, PNG o WEBP'))
+  }
+})
 
 // GET /api/clubes
 router.get('/', async (req, res) => {
@@ -26,14 +39,13 @@ router.get('/:id', async (req, res) => {
 })
 
 // POST /api/clubes/registro
-router.post('/registro', async (req, res) => {
+router.post('/registro', upload.single('fotoperfil'), async (req, res) => {
+
   try {
-    const club = await service.registrarClubAsync(req.body)
+    const club = await service.registrarClubAsync(req.body, req.file)
     res.status(StatusCodes.CREATED).json(club)
   } catch (error) {
-    res
-      .status(error.status || StatusCodes.INTERNAL_SERVER_ERROR)
-      .json({ error: error.message })
+    res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
   }
 })
 

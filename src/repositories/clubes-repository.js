@@ -68,6 +68,22 @@ class ClubesRepository {
 
     if (error) throw new Error(error.message)
   }
+
+  async subirFotoPerfilAsync(archivo) {
+  const nombreUnico = `clubes/${Date.now()}-${archivo.originalname}`
+
+  const { error } = await supabase.storage
+    .from('fotoPerfiles')
+    .upload(nombreUnico, archivo.buffer, { contentType: archivo.mimetype })
+
+  if (error) throw new Error(error.message)
+
+  const { data } = supabase.storage
+    .from('fotoPerfiles')
+    .getPublicUrl(nombreUnico)
+
+  return data.publicUrl
+}
 }
 
 export default ClubesRepository

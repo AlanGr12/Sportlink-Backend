@@ -1,8 +1,8 @@
 class Usuario{
-      constructor({ idusuario, email, contraseña, tipousuario} = {}) {
+      constructor({ idusuario, email, contrasenia, tipousuario} = {}) {
     this.idusuario = idusuario
     this.email = email
-    this.contraseña = contraseña
+    this.contrasenia = contrasenia
     this.tipousuario = tipousuario
   }
 }

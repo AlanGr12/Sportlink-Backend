@@ -38,7 +38,7 @@ class UsuariosRepository {
 
  }
 
-}
+} 
 
 export default UsuariosRepository
  
