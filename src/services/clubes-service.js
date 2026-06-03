@@ -18,16 +18,23 @@ class ClubesService {
   }
 
   async registrarClubAsync(data, archivo) {
+
   if (!data.email || !data.contrasenia) {
-    throw { status: 400, message: 'Email y contraseña son obligatorios para registrar un club' }
+    throw {
+      status: 400,
+      message: 'Email y contraseña son obligatorios para registrar un club'
+    }
   }
 
   if (!data.deportes || data.deportes.length === 0) {
-    throw { status: 400, message: 'Debe seleccionar al menos un deporte' }
+    throw {
+      status: 400,
+      message: 'Debe seleccionar al menos un deporte'
+    }
   }
 
-
   let urlFoto = null
+
   if (archivo) {
     urlFoto = await this.repository.subirFotoPerfilAsync(archivo)
   }
@@ -42,17 +49,18 @@ class ClubesService {
     usuario.idusuario,
     data.nombre,
     data.ubicacion,
-    urlFoto  
+    urlFoto
   )
 
-  const deportes = JSON.parse(data.deportes)
-  for (const iddeporte of deportes) {
-    await this.repository.asignarDeporteAsync(club.idclub, iddeporte)
+  for (const iddeporte of data.deportes) {
+    await this.repository.asignarDeporteAsync(
+      club.idclub,
+      iddeporte
+    )
   }
 
   return club
 }
-  
 
 }
 
