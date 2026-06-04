@@ -40,11 +40,6 @@ router.get('/:id', async (req, res) => {
 
 // POST /api/clubes/registro
 router.post('/registro', upload.single('fotoperfil'), async (req, res) => {
-  console.log("BODY")
-  console.log(req.body)
-
-  console.log("FILE")
-  console.log(req.file)
 
   try {
     const club = await service.registrarClubAsync(req.body, req.file)

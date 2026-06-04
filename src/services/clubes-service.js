@@ -19,6 +19,9 @@ class ClubesService {
 
   async registrarClubAsync(data, archivo) {
 
+  if (typeof data.deportes === 'string') {
+    data.deportes = JSON.parse(data.deportes)
+  }
   if (!data.email || !data.contrasenia) {
     throw {
       status: 400,
@@ -52,6 +55,7 @@ class ClubesService {
     data.descripcion,
     urlFoto
   )
+
 
   for (const iddeporte of data.deportes) {
     await this.repository.asignarDeporteAsync(
