@@ -25,11 +25,16 @@ class EntrenadoresService {
     return entrenador
   }
 
-  async registrarEntrenadorAsync(data) {
+  async registrarEntrenadorAsync(data, archivo) {
+    let urlFoto = null
+
+    if (archivo) {
+      urlFoto = await this.repository.subirFotoPerfilAsync(archivo)
+    }
 
     const usuario = await this.usuariosRepository.crearUsuarioAsync(
       data.email,
-      data.contraseña,
+      data.contrasenia,
       'entrenador'
     )
 
@@ -44,8 +49,9 @@ class EntrenadoresService {
       data.tieneclub,
       data.experiencia,
       data.titulo,
-      data.fotoperfil,
-      data.cv
+      urlFoto,
+      data.cv,
+      data.descripcion
     )
 
     await this.repository.asignarDeporteAsync(

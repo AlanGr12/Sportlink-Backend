@@ -1,9 +1,21 @@
 import { Router } from 'express'
 import { StatusCodes } from 'http-status-codes'
 import JugadoresService from '../services/jugadores-service.js'
+import multer from 'multer'
 
 const router = Router()
 const service = new JugadoresService()
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const permitidos = ['image/jpeg', 'image/png', 'image/webp']
+    permitidos.includes(file.mimetype)
+      ? cb(null, true)
+      : cb(new Error('Solo se permiten imágenes JPG, PNG o WEBP'))
+  }
+})
 
 // GET /api/jugadores
 router.get('/', async (req, res) => {
@@ -25,10 +37,9 @@ router.get('/:id', async (req, res) => {
   }
 })
 
-router.post('/registro', async (req, res) => {
+router.post('/registro', upload.single('fotoperfil'), async (req, res) => {
   try {
-
-    const jugador = await service.registrarJugadorAsync(req.body)
+    const jugador = await service.registrarJugadorAsync(req.body, req.file)
 
     res.status(StatusCodes.CREATED).json(jugador)
 

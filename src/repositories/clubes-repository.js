@@ -41,13 +41,14 @@ class ClubesRepository {
     })
   }
 
-  async crearClubAsync(idusuario, nombre, ubicacion, fotoperfil) {
+  async crearClubAsync(idusuario, nombre, ubicacion, descripcion, fotoperfil) {
     const { data, error } = await supabase
       .from('clubes')
       .insert({
         idusuario,
         nombre,
         ubicacion,
+        descripcion,
         fotoperfil
       })
       .select()

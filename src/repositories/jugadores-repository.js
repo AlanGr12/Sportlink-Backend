@@ -38,7 +38,8 @@ class JugadoresRepository {
   fechanacimiento,
   ubicacion,
   genero,
-  fotoperfil
+  fotoperfil,
+  descripcion
 ) {
   const { data, error } = await supabase
     .from('jugadores')
@@ -51,7 +52,8 @@ class JugadoresRepository {
       fechanacimiento,
       ubicacion,
       genero,
-      fotoperfil:null
+      fotoperfil,
+      descripcion
     })
     .select()
     .single()
@@ -60,6 +62,22 @@ class JugadoresRepository {
 
   return new Jugador(data)
 }
+
+  async subirFotoPerfilAsync(archivo) {
+    const nombreUnico = `jugadores/${Date.now()}-${archivo.originalname}`
+
+    const { error } = await supabase.storage
+      .from('fotoPerfiles')
+      .upload(nombreUnico, archivo.buffer, { contentType: archivo.mimetype })
+
+    if (error) throw new Error(error.message)
+
+    const { data } = supabase.storage
+      .from('fotoPerfiles')
+      .getPublicUrl(nombreUnico)
+
+    return data.publicUrl
+  }
 
 }
 

@@ -55,7 +55,8 @@ class EntrenadoresRepository {
   experiencia,
   titulo,
   fotoperfil,
-  cv
+  cv,
+  descripcion
 ) {
 
   const { data, error } = await supabase
@@ -72,7 +73,8 @@ class EntrenadoresRepository {
       experiencia,
       titulo,
       fotoperfil,
-      cv
+      cv,
+      descripcion
     })
     .select()
     .single()
@@ -80,6 +82,22 @@ class EntrenadoresRepository {
   if (error) throw new Error(error.message)
 
   return new Entrenador(data)
+}
+
+async subirFotoPerfilAsync(archivo) {
+  const nombreUnico = `entrenadores/${Date.now()}-${archivo.originalname}`
+
+  const { error } = await supabase.storage
+    .from('fotoPerfiles')
+    .upload(nombreUnico, archivo.buffer, { contentType: archivo.mimetype })
+
+  if (error) throw new Error(error.message)
+
+  const { data } = supabase.storage
+    .from('fotoPerfiles')
+    .getPublicUrl(nombreUnico)
+
+  return data.publicUrl
 }
 
 async asignarDeporteAsync(identrenador, iddeporte) {
@@ -91,7 +109,6 @@ async asignarDeporteAsync(identrenador, iddeporte) {
     })
 
   if (error) throw new Error(error.message)
-
 }
 
 }

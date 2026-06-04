@@ -49,6 +49,7 @@ class ClubesService {
     usuario.idusuario,
     data.nombre,
     data.ubicacion,
+    data.descripcion,
     urlFoto
   )
 

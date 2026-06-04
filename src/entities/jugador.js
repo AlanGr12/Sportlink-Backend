@@ -1,5 +1,5 @@
 class Jugador {
-  constructor({ idjugador, idusuario, nombre, apellido, telefono, fechanacimiento, fotoperfil, iddeporte, ubicacion, genero, createdat, updatedat,deportes } = {}) {
+  constructor({ idjugador, idusuario, nombre, apellido, telefono, fechanacimiento, fotoperfil, iddeporte, ubicacion, genero, descripcion, deportes } = {}) {
     this.idjugador = idjugador
     this.idusuario = idusuario
     this.nombre = nombre
@@ -11,8 +11,8 @@ class Jugador {
     this.deportes = deportes
     this.ubicacion = ubicacion
     this.genero = genero
-    this.createdat = createdat
-    this.updatedat = updatedat
+    this.descripcion = descripcion
+   
   }
 }
 

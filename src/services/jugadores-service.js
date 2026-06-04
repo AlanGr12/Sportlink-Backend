@@ -20,27 +20,33 @@ class JugadoresService {
     return jugador
   }
 
-   async registrarJugadorAsync(data) {
+   async registrarJugadorAsync(data, archivo) {
+    let urlFoto = null
 
-  const usuario = await this.usuariosRepository.crearUsuarioAsync(
-    data.email,
-    data.contraseña,
-    'jugador'
-  )
+    if (archivo) {
+      urlFoto = await this.repository.subirFotoPerfilAsync(archivo)
+    }
 
-  const jugador = await this.repository.crearJugadorAsync(
-    usuario.idusuario,
-    data.nombre,
-    data.apellido,
-    data.iddeporte,
-    data.telefono,
-    data.fechanacimiento,
-    data.ubicacion,
-    data.genero,
-    data.fotoperfil
-  )
+    const usuario = await this.usuariosRepository.crearUsuarioAsync(
+      data.email,
+      data.contrasenia,
+      'jugador'
+    )
 
-  return jugador
+    const jugador = await this.repository.crearJugadorAsync(
+      usuario.idusuario,
+      data.nombre,
+      data.apellido,
+      data.iddeporte,
+      data.telefono,
+      data.fechanacimiento,
+      data.ubicacion,
+      data.genero,
+      urlFoto,
+      data.descripcion
+    )
+
+    return jugador
 }
 }
 
