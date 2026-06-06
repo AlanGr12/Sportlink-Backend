@@ -38,6 +38,23 @@ class UsuariosRepository {
 
  }
 
+ async getPerfilByUsuarioAsync(idusuario, tipousuario) {
+  let tabla = ''
+  if (tipousuario === 'jugador') tabla = 'jugadores'
+  else if (tipousuario === 'entrenador') tabla = 'entrenadores'
+  else if (tipousuario === 'club') tabla = 'clubes'
+  else return null
+
+  const { data, error } = await supabase
+    .from(tabla)
+    .select('fotoperfil, nombre')
+    .eq('idusuario', idusuario)
+    .single()
+
+  if (error) return null
+  return data
+}
+
 } 
 
 export default UsuariosRepository

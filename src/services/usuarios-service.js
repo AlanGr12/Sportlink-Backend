@@ -6,15 +6,19 @@ class UsuariosService {
     this.repository = new UsuariosRepository()
   }
 
-  async loginAsync(email,contraseña) {
-    const usuario = await this.repository.getByEmailAsync(email)
+ async loginAsync(email, contraseña) {
+  const usuario = await this.repository.getByEmailAsync(email)
+  if (!usuario) throw { status: 404, message: `No se encontro el usuario` }
+  if (usuario.contraseña != contraseña) throw { status: 404, message: `No se encontro el usuario con esa contraseña` }
 
-    if (!usuario) throw { status: 404, message: `No se encontro el usuario` }
+  const perfil = await this.repository.getPerfilByUsuarioAsync(usuario.idusuario, usuario.tipousuario)
 
-    if (usuario.contraseña != contraseña) throw { status: 404, message: `No se encontro el usuario con esa contraseña`}
-
-    return usuario
+  return {
+    ...usuario,
+    fotoperfil: perfil?.fotoperfil || null,
+    nombre: perfil?.nombre || null
   }
+}
 
   
 
