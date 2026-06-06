@@ -20,6 +20,18 @@ class UsuariosService {
   }
 }
 
+ async getPerfilCompletoAsync(idusuario) {
+  const usuario = await this.repository.getByIdAsync(idusuario)
+  if (!usuario) throw { status: 404, message: `No se encontro el usuario` }
+
+  const perfil = await this.repository.getPerfilCompletoByUsuarioAsync(idusuario, usuario.tipousuario)
+
+  return {
+    ...usuario,
+    ...(perfil || {})
+  }
+ }
+
   
 
 }

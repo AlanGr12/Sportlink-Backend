@@ -16,4 +16,15 @@ router.post('/', async (req, res) => {
   }
 })
 
+
+router.get('/perfil/:idusuario', async (req, res) => {
+  const { idusuario } = req.params
+  try {
+    const perfil = await service.getPerfilCompletoAsync(Number(idusuario))
+    res.status(StatusCodes.OK).json(perfil)
+  } catch (error) {
+    res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
+  }
+})
+
 export default router

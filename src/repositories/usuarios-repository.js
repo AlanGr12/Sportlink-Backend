@@ -18,6 +18,19 @@ class UsuariosRepository {
  
  }
 
+     async getByIdAsync(idusuario) {
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select('*')
+        .eq('idusuario', idusuario)
+        .single()
+
+      if (error) throw new Error(error.message)
+
+      return data
+
+     }
+
 
 // ver su falta validar el email
 
@@ -54,6 +67,23 @@ class UsuariosRepository {
   if (error) return null
   return data
 }
+
+ async getPerfilCompletoByUsuarioAsync(idusuario, tipousuario) {
+  let tabla = ''
+  if (tipousuario === 'jugador') tabla = 'jugadores'
+  else if (tipousuario === 'entrenador') tabla = 'entrenadores'
+  else if (tipousuario === 'club') tabla = 'clubes'
+  else return null
+
+  const { data, error } = await supabase
+    .from(tabla)
+    .select('*')
+    .eq('idusuario', idusuario)
+    .single()
+
+  if (error) return null
+  return data
+ }
 
 } 
 
