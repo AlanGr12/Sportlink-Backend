@@ -6,7 +6,7 @@ class ClubesService {
     this.repository = new ClubesRepository()
     this.usuariosRepository = new UsuariosRepository()
   }
-
+ 
   async getAllAsync() {
     return await this.repository.getAllAsync()
   }
