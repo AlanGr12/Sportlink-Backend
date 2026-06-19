@@ -84,6 +84,22 @@ if (error && error.code !== 'PGRST116') throw new Error(error.message)
 
   return !!data
 }
+
+async subirFotoPruebaAsync(archivo) {
+  const nombreUnico = `pruebas/${Date.now()}-${archivo.originalname}`
+
+  const { error } = await supabase.storage
+    .from('fotoPruebas')
+    .upload(nombreUnico, archivo.buffer, { contentType: archivo.mimetype })
+
+  if (error) throw new Error(error.message)
+
+  const { data } = supabase.storage
+    .from('fotoPruebas')
+    .getPublicUrl(nombreUnico)
+
+  return data.publicUrl
+}
 }
 
 export default PruebasRepository
