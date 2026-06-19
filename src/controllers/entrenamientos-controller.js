@@ -20,7 +20,11 @@ const upload = multer({
 // GET /api/entrenamientos
 router.get('/', async (req, res) => {
   try {
-    const list = await service.getAllAsync()
+    // support optional filters via query string
+    const hasFilters = Object.keys(req.query || {}).length > 0
+    const list = hasFilters
+      ? await service.getAllAsyncWithFilters(req.query)
+      : await service.getAllAsync()
     res.status(StatusCodes.OK).json(list)
   } catch (error) {
     res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })

@@ -9,6 +9,30 @@ class EntrenamientosService {
     return await this.repository.getAllAsync()
   }
 
+  async getAllAsyncWithFilters(query) {
+    const filters = {}
+
+    if (query.iddeporte) filters.iddeporte = Number(query.iddeporte)
+    if (query.identrenador) filters.identrenador = Number(query.identrenador)
+
+    if (typeof query.estado !== 'undefined') {
+      if (query.estado === 'true' || query.estado === 'false') {
+        filters.estado = query.estado === 'true'
+      } else if (typeof query.estado === 'boolean') {
+        filters.estado = query.estado
+      } else {
+        throw { status: 400, message: 'El estado debe ser true o false' }
+      }
+    }
+
+    if (query.fechaFrom) filters.fechaFrom = query.fechaFrom
+    if (query.fechaTo) filters.fechaTo = query.fechaTo
+    if (query.titulo) filters.titulo = query.titulo
+    if (query.ubicacion) filters.ubicacion = query.ubicacion
+
+    return await this.repository.getAllAsyncWithFilters(filters)
+  }
+
   async getByIdAsync(id) {
     const ent = await this.repository.getByIdAsync(id)
     if (!ent) throw { status: 404, message: `No se encontró el entrenamiento con id ${id}` }
