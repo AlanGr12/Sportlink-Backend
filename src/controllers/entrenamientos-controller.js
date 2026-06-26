@@ -1,10 +1,12 @@
 import { Router } from 'express'
 import { StatusCodes } from 'http-status-codes'
 import EntrenamientosService from '../services/entrenamientos-service.js'
+import EntrenamientoXJugador from '../services/entrenamientoxjugador.js'
 import multer from 'multer'
 
 const router = Router()
 const service = new EntrenamientosService()
+const service2 = new EntrenamientoXJugador()
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -26,6 +28,19 @@ router.get('/', async (req, res) => {
       ? await service.getAllAsyncWithFilters(req.query)
       : await service.getAllAsync()
     res.status(StatusCodes.OK).json(list)
+  } catch (error) {
+    res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
+  }
+})
+
+// GET /api/entrenamientos/deporte?idJugador=...
+//ejemplo GET /api/entrenamientos/deporte?idJugador=5
+router.get('/deporte', async (req, res) => {
+  try {
+    const idJugador = req.query.idJugador || req.query.id
+    if (!idJugador) throw { status: 400, message: 'El id del jugador es obligatorio' }
+    const entrenamientosDeporte = await service2.getAllDeporteAsync(idJugador)
+    res.status(StatusCodes.OK).json(entrenamientosDeporte)
   } catch (error) {
     res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
   }

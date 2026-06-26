@@ -56,6 +56,21 @@ class EntrenamientosRepository {
 
     return new Entrenamiento(data)
   }
+  async getAllDeporteAsync(jugador) {
+    const { data, error } = await supabase
+      .from('entrenamientos')
+      .select(`
+        *,
+        deportes ( iddeporte, deporte ),
+        entrenadores ( identrenador, nombre )
+      `)
+      .eq('iddeporte', jugador.iddeporte)
+
+    if (error) throw new Error(error.message)
+    if (!data) return []
+
+    return data.map(e => new Entrenamiento(e))
+  }
 
   async crearEntrenamiento(iddeporte, identrenador, precio, cantidad, titulo, imagen, ubicacion, fechaentr, estado, descripcion, genero, nivel) {
     const { data, error } = await supabase
