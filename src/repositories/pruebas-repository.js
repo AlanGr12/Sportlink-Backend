@@ -33,6 +33,22 @@ class PruebasRepository {
     return new Prueba(data)
   }
 
+  async getAllDeporteAsync(jugador) {
+    const { data, error } = await supabase
+      .from('pruebas')
+      .select(`
+        *,
+        clubes ( idclub, nombre, fotoperfil, ubicacion ),
+        deportes ( iddeporte, deporte )
+      `)
+      .eq('iddeporte', jugador.iddeporte)
+
+    if (error) throw new Error(error.message)
+    if (!data) return []
+
+    return data.map(p => new Prueba(p))
+  }
+
   async crearPrueba(idclub, iddeporte, cupo, horainicio, horafin, estado,
                   descripcion, imagen, categoria, zona, genero,
                   fechaprueba, fechacierre) {
