@@ -2,6 +2,15 @@ import supabase from '../configs/supabase-config.js'
 import Prueba from '../entities/prueba.js'
 
 class PruebasRepository {
+
+  //"Este método verifica si la imagen es solo el nombre del archivo y, si es así, la convierte automáticamente en la URL pública de Supabase; si ya es una URL completa, la deja igual."
+  #normalizarImagen(p) {
+    if (p.imagen && !p.imagen.startsWith('http')) {
+      p.imagen = `${process.env.SUPABASE_URL}/storage/v1/object/public/fotoPruebas/${p.imagen}`
+    }
+    return p
+  }
+
   async getAllAsync() {
     const { data, error } = await supabase
       .from('pruebas')
@@ -13,7 +22,7 @@ class PruebasRepository {
 
     if (error) throw new Error(error.message)
 
-    return data.map(p => new Prueba(p))
+    return data.map(p => new Prueba(this.#normalizarImagen(p)))
   }
 
   async getByIdAsync(id) {
@@ -30,7 +39,7 @@ class PruebasRepository {
     if (error) throw new Error(error.message)
     if (!data) return null
 
-    return new Prueba(data)
+    return new Prueba(this.#normalizarImagen(data))
   }
 
   async getAllDeporteAsync(jugador) {
@@ -46,7 +55,7 @@ class PruebasRepository {
     if (error) throw new Error(error.message)
     if (!data) return []
 
-    return data.map(p => new Prueba(p))
+    return data.map(p => new Prueba(this.#normalizarImagen(p)))
   }
 
   async crearPrueba(idclub, iddeporte, cupo, horainicio, horafin, estado,
