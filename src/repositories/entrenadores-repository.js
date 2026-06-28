@@ -1,7 +1,17 @@
 import supabase from '../configs/supabase-config.js'
 import Entrenador from '../entities/entrenador.js'
 
+
+
 class EntrenadoresRepository {
+
+  //"Este método verifica si la foto de perfil es solo el nombre del archivo y, si es así, la convierte automáticamente en la URL pública de Supabase; si ya es una URL completa, la deja igual."
+  #normalizarFotoPerfil(e) {
+    if (e.fotoperfil && !e.fotoperfil.startsWith('http')) {
+      e.fotoperfil = `${process.env.SUPABASE_URL}/storage/v1/object/public/fotoPerfiles/entrenadores/${e.fotoperfil}`
+    }
+    return e
+  }
 
   async getAllAsync() {
     const { data, error } = await supabase
@@ -15,10 +25,13 @@ class EntrenadoresRepository {
 
     if (error) throw new Error(error.message)
 
-    return data.map(e => new Entrenador({
-      ...e,
-      deportes: e.entrenadoresxdeportes.map(exd => exd.deportes)
-    }))
+    return data.map(e => {
+      this.#normalizarFotoPerfil(e)
+      return new Entrenador({
+        ...e,
+        deportes: e.entrenadoresxdeportes.map(exd => exd.deportes)
+      })
+    })
   }
 
   async getByIdAsync(id) {
@@ -36,6 +49,8 @@ class EntrenadoresRepository {
     if (error) throw new Error(error.message)
 
     if (!data) return null
+
+    this.#normalizarFotoPerfil(data)
 
     return new Entrenador({
       ...data,

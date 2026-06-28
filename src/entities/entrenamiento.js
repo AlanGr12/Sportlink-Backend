@@ -15,5 +15,6 @@ export default class Entrenamiento {
     this.nivel = nivel
     this.createdat = createdat
     this.updatedat = updatedat
+  
   }
 }
