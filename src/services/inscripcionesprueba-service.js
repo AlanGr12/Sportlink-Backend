@@ -5,8 +5,8 @@ class InscripcionesPruebaService {
     this.repository = new InscripcionesPruebaRepository()
   }
 
-  async getAllAsync() {
-    return await this.repository.getAllAsync()
+  async getAllAsync(idprueba = null) {
+    return await this.repository.getAllAsync(idprueba)
   }
 
   async getByIdAsync(id) {
