@@ -1,5 +1,5 @@
 export default class Entrenamiento {
-  constructor({ identrenamientos, iddeporte, identrenador, precio, cantidad, titulo, imagen, ubicacion, fechaentr, estado, descripcion, genero, nivel, createdat, updatedat } = {}) {
+  constructor({ identrenamientos, iddeporte, identrenador, precio, cantidad, titulo, imagen, ubicacion, fechaentr, estado, descripcion, genero, nivel, createdat, updatedat, deportes, entrenadores } = {}) {
     this.identrenamientos = identrenamientos
     this.iddeporte = iddeporte
     this.identrenador = identrenador
@@ -15,6 +15,7 @@ export default class Entrenamiento {
     this.nivel = nivel
     this.createdat = createdat
     this.updatedat = updatedat
-  
+    this.deportes = deportes
+    this.entrenadores = entrenadores
   }
 }
