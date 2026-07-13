@@ -11,6 +11,7 @@ import EntrenamientosController from './controllers/entrenamientos-controller.js
 import InscripcionesEntrenamientosController from './controllers/inscripcionesentrenamientos-controller.js'
 import InscripcionesPruebaController from './controllers/inscripcionesprueba-controller.js'
 import CalendarioEventosController from './controllers/calendarioeventos-controller.js'
+import EmpleoController from './controllers/empleo-controller.js'
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -28,6 +29,7 @@ app.use('/api/entrenamientos', EntrenamientosController)
 app.use('/api/inscripcionesentrenamientos', InscripcionesEntrenamientosController)
 app.use('/api/inscripcionesprueba', InscripcionesPruebaController)
 app.use('/api/calendario', CalendarioEventosController)
+app.use('/api/empleo', EmpleoController)
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`)
 })
