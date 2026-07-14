@@ -5,12 +5,59 @@ class CalendarioEventosService {
     this.repository = new CalendarioEventosRepository()
   }
 
+  // ── Crear evento personalizado ─────────────────────────────────────────────
   async crearEvento(payload) {
     return await this.repository.crearEvento(payload)
   }
 
+  // ── Editar evento personalizado ────────────────────────────────────────────
+  async editarEvento(idevento, idusuario, campos) {
+    return await this.repository.editarEvento(idevento, idusuario, campos)
+  }
+
+  // ── Eliminar evento personalizado ──────────────────────────────────────────
+  async eliminarEvento(idevento, idusuario) {
+    return await this.repository.eliminarEvento(idevento, idusuario)
+  }
+
+  // ── Obtener todos los eventos del usuario (propios + pruebas automáticas) ──
   async getByUsuario(idusuario) {
-    return await this.repository.getByUsuario(idusuario)
+    // 1. Eventos guardados manualmente en calendarioeventos
+    const eventosPropios = await this.repository.getByUsuario(idusuario)
+
+    // 2. Pruebas a las que el usuario (jugador) está inscrito
+    let pruebasAutomaticas = []
+    try {
+      pruebasAutomaticas = await this.repository.getPruebasInscritasPorUsuario(idusuario)
+    } catch {
+      // Si el usuario no es jugador o falla la consulta, lo ignoramos
+    }
+
+    // 3. Evitar duplicados: si ya existe un evento PRUEBA con el mismo idprueba
+    //    en los eventos propios, no lo agregamos dos veces.
+    const idPruebasEnPropios = new Set(
+      eventosPropios
+        .filter(e => e.tipo === 'PRUEBA' && e.idprueba)
+        .map(e => e.idprueba)
+    )
+
+    const pruebasSinDuplicar = pruebasAutomaticas.filter(
+      p => !idPruebasEnPropios.has(p.idprueba)
+    )
+
+    // 4. Merge y ordenar por fecha
+    const todos = [...eventosPropios, ...pruebasSinDuplicar]
+    todos.sort((a, b) => {
+      const fa = a.fecha || ''
+      const fb = b.fecha || ''
+      if (fa < fb) return -1
+      if (fa > fb) return  1
+      const ha = a.horainicio || ''
+      const hb = b.horainicio || ''
+      return ha < hb ? -1 : ha > hb ? 1 : 0
+    })
+
+    return todos
   }
 }
 
