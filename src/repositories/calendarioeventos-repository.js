@@ -325,6 +325,96 @@ class CalendarioEventosRepository {
         return eventoObj
       })
   }
+
+  // ── Entrevistas laborales del entrenador (eventos automáticos) ──────────────
+  async getEntrevistasInscritasPorUsuario(idusuario) {
+    console.log('[Calendario] Buscando entrenador para idusuario =', idusuario)
+
+    // 1. Buscar el entrenador
+    const { data: entrenadorData, error: errEntrenador } = await supabase
+      .from('entrenadores')
+      .select('identrenador')
+      .eq('idusuario', idusuario)
+      .maybeSingle()
+
+    if (errEntrenador) {
+      console.error('[Calendario] Error al buscar entrenador:', errEntrenador)
+      return []
+    }
+
+    if (!entrenadorData) {
+      console.log('[Calendario] El usuario', idusuario, 'no es entrenador — sin entrevistas automáticas')
+      return []
+    }
+
+    const identrenador = entrenadorData.identrenador
+    console.log('[Calendario] identrenador encontrado:', identrenador)
+
+    // 2. Inscripciones activas con entrevistas pendientes
+    const { data: inscripciones, error: errInsc } = await supabase
+      .from('inscripcionesempleo')
+      .select(`
+        idinsripcion,
+        identrenador,
+        idempleo,
+        estado,
+        empleo (
+          idempleo,
+          nombre,
+          clubes ( idclub, nombre, fotoperfil, ubicacion )
+        ),
+        entrevistas (
+          identrevista,
+          idinscripcion,
+          fecha,
+          horainicio,
+          horafin,
+          ubicacion,
+          comentarios,
+          puntaje,
+          estado
+        )
+      `)
+      .eq('identrenador', identrenador)
+      .eq('estado', true)
+
+    if (errInsc) {
+      console.error('[Calendario] Error al obtener inscripciones de empleo:', errInsc)
+      throw new Error(errInsc.message)
+    }
+
+    console.log('[Calendario] Inscripciones de empleo encontradas:', inscripciones?.length ?? 0)
+
+    // 3. Aplanar: una fila por cada entrevista PENDIENTE
+    const eventos = []
+    for (const insc of (inscripciones || [])) {
+      const entrevistas = Array.isArray(insc.entrevistas) ? insc.entrevistas : []
+      for (const ent of entrevistas) {
+        if (ent.estado !== 'PENDIENTE') continue
+
+        const empNombre = insc.empleo?.nombre || 'Empleo'
+        const clubNombre = insc.empleo?.clubes?.nombre || 'Club'
+
+        eventos.push(new CalendarioEvento({
+          idevento:            null,
+          idusuario,
+          tipo:                'ENTREVISTA',
+          fecha:               ent.fecha,
+          horainicio:          ent.horainicio || null,
+          horafin:             ent.horafin || null,
+          idprueba:            null,
+          identrenamiento:     null,
+          idinscripcionempleo: insc.idinsripcion,
+          titulo:              `Entrevista: ${empNombre} — ${clubNombre}`,
+          descripcion:         ent.ubicacion ? `Ubicación: ${ent.ubicacion}` : null,
+          imagen:              null,
+        }))
+      }
+    }
+
+    return eventos
+  }
 }
 
 export default CalendarioEventosRepository
+
