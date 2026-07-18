@@ -41,8 +41,18 @@ class CalendarioEventosService {
       // Si el usuario no es entrenador o falla la consulta, lo ignoramos
     }
 
-    // 4. Evitar duplicados: si ya existe un evento PRUEBA con el mismo idprueba
+    // 4. Pruebas y Empleos publicados (club)
+    let eventosClubAutomaticos = []
+    try {
+      eventosClubAutomaticos = await this.repository.getEventosClubPorUsuario(idusuario)
+    } catch {
+      // Si el usuario no es club o falla la consulta, lo ignoramos
+    }
+
+    // 5. Evitar duplicados: si ya existe un evento PRUEBA con el mismo idprueba
     //    o un evento ENTREVISTA con el mismo idinscripcionempleo en los eventos propios, no los agregamos dos veces.
+    //    También evitamos agregar las pruebas/empleos publicados por el club si el club mismo (u otro proceso)
+    //    los agregó manualmente.
     const idPruebasEnPropios = new Set(
       eventosPropios
         .filter(e => e.tipo === 'PRUEBA' && e.idprueba)
@@ -63,8 +73,17 @@ class CalendarioEventosService {
       e => !idInscripcionesEnPropios.has(e.idinscripcionempleo)
     )
 
-    // 5. Merge y ordenar por fecha
-    const todos = [...eventosPropios, ...pruebasSinDuplicar, ...entrevistasSinDuplicar]
+    // Para los del club, filtramos también (usando idprueba e idinscripcionempleo para empleos)
+    const eventosClubSinDuplicar = eventosClubAutomaticos.filter(
+      e => {
+        if (e.tipo === 'PRUEBA' && e.idprueba) return !idPruebasEnPropios.has(e.idprueba)
+        if (e.tipo === 'EMPLEO' && e.idinscripcionempleo) return !idInscripcionesEnPropios.has(e.idinscripcionempleo)
+        return true // Si es otro tipo (no debería), lo dejamos
+      }
+    )
+
+    // 6. Merge y ordenar por fecha
+    const todos = [...eventosPropios, ...pruebasSinDuplicar, ...entrevistasSinDuplicar, ...eventosClubSinDuplicar]
     todos.sort((a, b) => {
       const fa = a.fecha || ''
       const fb = b.fecha || ''

@@ -1,8 +1,12 @@
 import EntrenamientosRepository from '../repositories/entrenamientos-repository.js'
+import EntrenadoresRepository from '../repositories/entrenadores-repository.js'
+import CalendarioEventosService from './calendarioeventos-service.js'
 
 class EntrenamientosService {
   constructor() {
     this.repository = new EntrenamientosRepository()
+    this.entrenadoresRepo = new EntrenadoresRepository()
+    this.calendarioService = new CalendarioEventosService()
   }
 
   async getAllAsync() {
@@ -81,7 +85,7 @@ class EntrenamientosService {
 
     if (!imagenUrl) throw { status: 400, message: 'La imagen es obligatoria' }
 
-    return await this.repository.crearEntrenamiento(
+    const entrenamiento = await this.repository.crearEntrenamiento(
       iddeporte,
       identrenador,
       precio,
@@ -95,6 +99,29 @@ class EntrenamientosService {
       genero,
       nivel
     )
+
+    // Intentar crear evento en el calendario del entrenador (no interrumpe si falla)
+    try {
+      const entrenador = await this.entrenadoresRepo.getByIdAsync(Number(identrenador))
+      if (entrenador) {
+        await this.calendarioService.crearEvento({
+          idusuario:       entrenador.idusuario,
+          tipo:            'ENTRENAMIENTO',
+          fecha:           fechaentr,
+          horainicio:      null,
+          horafin:         null,
+          idprueba:        null,
+          identrenamiento: entrenamiento.identrenamientos,
+          idinscripcionempleo: null,
+          titulo:          titulo,
+          descripcion:     descripcion
+        })
+      }
+    } catch (evtErr) {
+      console.error('Error creando evento de calendario para entrenamiento:', evtErr.message || evtErr)
+    }
+
+    return entrenamiento
   }
 }
 

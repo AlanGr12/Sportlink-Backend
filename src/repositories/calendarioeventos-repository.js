@@ -414,6 +414,109 @@ class CalendarioEventosRepository {
 
     return eventos
   }
+
+  // ── Pruebas y Empleos publicados por el Club (eventos automáticos) ────────
+  async getEventosClubPorUsuario(idusuario) {
+    console.log('[Calendario] Buscando club para idusuario =', idusuario)
+
+    // 1. Buscar el club
+    const { data: clubData, error: errClub } = await supabase
+      .from('clubes')
+      .select('idclub, nombre')
+      .eq('idusuario', idusuario)
+      .maybeSingle()
+
+    if (errClub) {
+      console.error('[Calendario] Error al buscar club:', errClub)
+      return []
+    }
+
+    if (!clubData) {
+      console.log('[Calendario] El usuario', idusuario, 'no es club — sin eventos automáticos de club')
+      return []
+    }
+
+    const idclub = clubData.idclub
+    const clubNombre = clubData.nombre
+    console.log('[Calendario] idclub encontrado:', idclub)
+
+    const eventos = []
+
+    // 2. Consultar pruebas creadas por este club
+    const { data: pruebas, error: errPruebas } = await supabase
+      .from('pruebas')
+      .select(`
+        idprueba,
+        fechaprueba,
+        horainicio,
+        horafin,
+        descripcion,
+        imagen,
+        deportes ( deporte )
+      `)
+      .eq('idclub', idclub)
+
+    if (errPruebas) {
+      console.error('[Calendario] Error al obtener pruebas del club:', errPruebas)
+    } else {
+      for (const p of (pruebas || [])) {
+        let imagen = p.imagen || null
+        if (imagen && !imagen.startsWith('http')) {
+          imagen = `${process.env.SUPABASE_URL}/storage/v1/object/public/fotoPruebas/${imagen}`
+        }
+
+        eventos.push(new CalendarioEvento({
+          idevento:            null,
+          idusuario,
+          tipo:                'PRUEBA',
+          fecha:               p.fechaprueba,
+          horainicio:          p.horainicio,
+          horafin:             p.horafin,
+          idprueba:            p.idprueba,
+          identrenamiento:     null,
+          idinscripcionempleo: null,
+          titulo:              `Prueba: ${p.deportes?.deporte || 'Deporte'} — ${clubNombre}`,
+          descripcion:         p.descripcion || null,
+          imagen,
+        }))
+      }
+    }
+
+    // 3. Consultar empleos creados por este club
+    const { data: empleos, error: errEmpleos } = await supabase
+      .from('empleo')
+      .select(`
+        idempleo,
+        nombre,
+        fechapublicacion,
+        acercaempleo,
+        deportes ( deporte )
+      `)
+      .eq('idclub', idclub)
+
+    if (errEmpleos) {
+      console.error('[Calendario] Error al obtener empleos del club:', errEmpleos)
+    } else {
+      for (const emp of (empleos || [])) {
+        eventos.push(new CalendarioEvento({
+          idevento:            null,
+          idusuario,
+          tipo:                'EMPLEO',
+          fecha:               emp.fechapublicacion,
+          horainicio:          null,
+          horafin:             null,
+          idprueba:            null,
+          identrenamiento:     null,
+          idinscripcionempleo: emp.idempleo, // Mapeamos a este campo por conveniencia o se ignora
+          titulo:              `Empleo: ${emp.nombre}`,
+          descripcion:         emp.acercaempleo || null,
+          imagen:              null,
+        }))
+      }
+    }
+
+    return eventos
+  }
 }
 
 export default CalendarioEventosRepository

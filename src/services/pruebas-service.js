@@ -1,8 +1,12 @@
 import PruebasRepository from '../repositories/pruebas-repository.js'
+import ClubesRepository from '../repositories/clubes-repository.js'
+import CalendarioEventosService from './calendarioeventos-service.js'
 
 class PruebasService {
   constructor() {
     this.repository = new PruebasRepository()
+    this.clubesRepo = new ClubesRepository()
+    this.calendarioService = new CalendarioEventosService()
   }
 
   async getAllAsync() {
@@ -64,7 +68,7 @@ class PruebasService {
   const existe = await this.repository.existePrueba(idclub, iddeporte, fechaprueba, categoria, genero)
   if (existe) throw { status: 400, message: 'Ya existe una prueba para ese club, deporte y fecha' }
 
-  return await this.repository.crearPrueba(
+  const prueba = await this.repository.crearPrueba(
     idclub,
     iddeporte,
     cupo,
@@ -79,6 +83,30 @@ class PruebasService {
     fechaprueba,
     fechacierre
   )
+
+  // Intentar crear evento en el calendario del Club (no interrumpe si falla)
+  try {
+    const club = await this.clubesRepo.getByIdAsync(Number(idclub))
+    if (club) {
+      const deporteNombre = prueba.deporte?.deporte || 'Deporte'
+      await this.calendarioService.crearEvento({
+        idusuario:           club.idusuario,
+        tipo:                'PRUEBA',
+        fecha:               fechaprueba,
+        horainicio:          horainicio,
+        horafin:             horafin,
+        idprueba:            prueba.idprueba,
+        identrenamiento:     null,
+        idinscripcionempleo: null,
+        titulo:              `Prueba: ${deporteNombre} — ${club.nombre}`,
+        descripcion:         descripcion
+      })
+    }
+  } catch (evtErr) {
+    console.error('Error creando evento de calendario para prueba:', evtErr.message || evtErr)
+  }
+
+  return prueba
 }
 }
 
