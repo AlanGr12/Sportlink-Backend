@@ -8,7 +8,8 @@ const service = new InscripcionesEntrenamientosService()
 // GET /api/inscripcionesentrenamientos
 router.get('/', async (req, res) => {
   try {
-    const list = await service.getAllAsync()
+    const identrenamiento = req.query.identrenamiento ? Number(req.query.identrenamiento) : null
+    const list = await service.getAllAsync(identrenamiento)
     res.status(StatusCodes.OK).json(list)
   } catch (error) {
     res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })

@@ -2,14 +2,30 @@ import supabase from '../configs/supabase-config.js'
 import InscripcionEntrenamiento from '../entities/inscripcionentrenamiento.js'
 
 class InscripcionesEntrenamientosRepository {
-  async getAllAsync() {
-    const { data, error } = await supabase
+  async getAllAsync(identrenamiento = null) {
+    let query = supabase
       .from('inscripcionesentrenamientos')
-      .select('*')
+      .select(`
+        *,
+        jugadores (
+          *,
+          deportes ( deporte )
+        )
+      `)
+
+    if (identrenamiento) {
+      query = query.eq('identrenamiento', identrenamiento)
+    }
+
+    const { data, error } = await query
 
     if (error) throw new Error(error.message)
 
-    return (data || []).map(i => new InscripcionEntrenamiento(i))
+    return (data || []).map(i => {
+      const ins = new InscripcionEntrenamiento(i)
+      ins.jugador = i.jugadores || i.jugador
+      return ins
+    })
   }
 
   async getByIdAsync(id) {

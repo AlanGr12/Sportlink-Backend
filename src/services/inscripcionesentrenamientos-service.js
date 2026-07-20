@@ -11,8 +11,8 @@ class InscripcionesEntrenamientosService {
     this.calendarioService = new CalendarioEventosService()
   }
 
-  async getAllAsync() {
-    return await this.repository.getAllAsync()
+  async getAllAsync(identrenamiento = null) {
+    return await this.repository.getAllAsync(identrenamiento)
   }
 
   async getByIdAsync(id) {
