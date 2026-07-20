@@ -517,7 +517,69 @@ class CalendarioEventosRepository {
 
     return eventos
   }
+
+  // ── Entrenamientos publicados por el Entrenador (eventos automáticos) ────────
+  // Simétrico a getEventosClubPorUsuario: resuelve identrenador a partir de
+  // idusuario y trae todos sus entrenamientos como eventos de calendario.
+  async getEntrenamientosPublicadosPorUsuario(idusuario) {
+    console.log('[Calendario] Buscando entrenador (entrenamientos) para idusuario =', idusuario)
+
+    // 1. Resolver identrenador
+    const { data: entrenadorData, error: errEntrenador } = await supabase
+      .from('entrenadores')
+      .select('identrenador, nombre')
+      .eq('idusuario', idusuario)
+      .maybeSingle()
+
+    if (errEntrenador) {
+      console.error('[Calendario] Error al buscar entrenador (entrenamientos):', errEntrenador)
+      return []
+    }
+
+    if (!entrenadorData) {
+      console.log('[Calendario] El usuario', idusuario, 'no es entrenador — sin entrenamientos automáticos')
+      return []
+    }
+
+    const identrenador = entrenadorData.identrenador
+    const entrenadorNombre = entrenadorData.nombre
+    console.log('[Calendario] identrenador encontrado (entrenamientos):', identrenador)
+
+    // 2. Consultar entrenamientos de este entrenador
+    const { data: entrenamientos, error: errEntr } = await supabase
+      .from('entrenamientos')
+      .select(`
+        identrenamientos,
+        titulo,
+        descripcion,
+        fechaentr,
+        deportes ( deporte )
+      `)
+      .eq('identrenador', identrenador)
+
+    if (errEntr) {
+      console.error('[Calendario] Error al obtener entrenamientos del entrenador:', errEntr)
+      return []
+    }
+
+    console.log('[Calendario] Entrenamientos del entrenador encontrados:', entrenamientos?.length ?? 0)
+
+    // 3. Mapear al formato de CalendarioEvento
+    return (entrenamientos || []).map(e => new CalendarioEvento({
+      idevento:            null,
+      idusuario,
+      tipo:                'ENTRENAMIENTO',
+      fecha:               e.fechaentr,
+      horainicio:          null,
+      horafin:             null,
+      idprueba:            null,
+      identrenamiento:     e.identrenamientos,
+      idinscripcionempleo: null,
+      titulo:              e.titulo || `Entrenamiento: ${e.deportes?.deporte || 'Deporte'} — ${entrenadorNombre}`,
+      descripcion:         e.descripcion || null,
+      imagen:              null,
+    }))
+  }
 }
 
 export default CalendarioEventosRepository
-

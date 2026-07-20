@@ -49,6 +49,14 @@ class CalendarioEventosService {
       // Si el usuario no es club o falla la consulta, lo ignoramos
     }
 
+    // 5. Entrenamientos publicados (entrenador)
+    let eventosEntrenadorAutomaticos = []
+    try {
+      eventosEntrenadorAutomaticos = await this.repository.getEntrenamientosPublicadosPorUsuario(idusuario)
+    } catch {
+      // Si el usuario no es entrenador o falla la consulta, lo ignoramos
+    }
+
     // 5. Evitar duplicados: si ya existe un evento PRUEBA con el mismo idprueba
     //    o un evento ENTREVISTA con el mismo idinscripcionempleo en los eventos propios, no los agregamos dos veces.
     //    También evitamos agregar las pruebas/empleos publicados por el club si el club mismo (u otro proceso)
@@ -78,12 +86,24 @@ class CalendarioEventosService {
       e => {
         if (e.tipo === 'PRUEBA' && e.idprueba) return !idPruebasEnPropios.has(e.idprueba)
         if (e.tipo === 'EMPLEO' && e.idinscripcionempleo) return !idInscripcionesEnPropios.has(e.idinscripcionempleo)
-        return true // Si es otro tipo (no debería), lo dejamos
+        return true
       }
     )
 
-    // 6. Merge y ordenar por fecha
-    const todos = [...eventosPropios, ...pruebasSinDuplicar, ...entrevistasSinDuplicar, ...eventosClubSinDuplicar]
+    // Para los del entrenador, deduplicar por identrenamiento respecto a eventosPropios
+    const idEntrenamientosEnPropios = new Set(
+      eventosPropios
+        .filter(e => e.tipo === 'ENTRENAMIENTO' && e.identrenamiento)
+        .map(e => e.identrenamiento)
+    )
+    const eventosEntrenadorSinDuplicar = eventosEntrenadorAutomaticos.filter(
+      e => e.tipo === 'ENTRENAMIENTO' && e.identrenamiento
+        ? !idEntrenamientosEnPropios.has(e.identrenamiento)
+        : true
+    )
+
+    // 7. Merge y ordenar por fecha
+    const todos = [...eventosPropios, ...pruebasSinDuplicar, ...entrevistasSinDuplicar, ...eventosClubSinDuplicar, ...eventosEntrenadorSinDuplicar]
     todos.sort((a, b) => {
       const fa = a.fecha || ''
       const fb = b.fecha || ''

@@ -46,6 +46,26 @@ router.get('/deporte', async (req, res) => {
   }
 })
 
+// GET /api/entrenamientos/mios?identrenador=N
+// Devuelve SOLO los entrenamientos del entrenador indicado.
+// El frontend del rol ENTRENADOR debe enviar su identrenador numérico.
+router.get('/mios', async (req, res) => {
+  try {
+    const identrenador = req.query.identrenador
+    if (!identrenador || isNaN(Number(identrenador))) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        error: 'El parámetro identrenador es obligatorio y debe ser numérico'
+      })
+    }
+    // Fuerza el filtro: aunque vengan otros query params, identrenador no es negociable
+    const filtros = { ...req.query, identrenador: Number(identrenador) }
+    const list = await service.getAllAsyncWithFilters(filtros)
+    res.status(StatusCodes.OK).json(list)
+  } catch (error) {
+    res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
+  }
+})
+
 // POST /api/entrenamientos
 router.post('/', upload.single('imagen'), async (req, res) => {
   try {
