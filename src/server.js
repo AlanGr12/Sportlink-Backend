@@ -19,7 +19,7 @@ const app = express()
 const PORT = process.env.PORT || 3000
 
 app.use(cors())
-// Límite ampliado a 10mb para soportar imágenes en base64 en el payload
+
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ limit: '10mb', extended: true }))
 
