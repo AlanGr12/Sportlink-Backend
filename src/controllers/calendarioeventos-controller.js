@@ -2,49 +2,20 @@ import { Router } from 'express'
 import { StatusCodes } from 'http-status-codes'
 import CalendarioEventosService from '../services/calendarioeventos-service.js'
 import ClubesRepository from '../repositories/clubes-repository.js'
+import { verificarToken } from '../middlewares/auth-middleware.js'
 
 const router = Router()
 const service = new CalendarioEventosService()
 const clubesRepo = new ClubesRepository()
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// Todas las rutas del calendario requieren JWT válido
+router.use(verificarToken)
 
 /**
- * Extrae el idusuario desde múltiples fuentes posibles del request.
- * Orden de prioridad:
- *   1. req.user (si hay middleware de sesión/JWT configurado)
- *   2. Header 'x-user-id' (normalizado a minúsculas por Express/Node)
- *   3. Query param ?userId=
- *
- * Retorna un Number > 0 o null si no se pudo resolver.
- */
-function resolverUsuario(req) {
-  // 1. Sesión/JWT (si se implementa en el futuro)
-  if (req.user?.idusuario) return Number(req.user.idusuario)
-  if (req.user?.id)        return Number(req.user.id)
-
-  // 2. Header personalizado — Express normaliza todos los headers a minúsculas
-  //    El frontend envía 'X-User-Id' pero Express lo recibe como 'x-user-id'
-  const headerRaw = req.headers['x-user-id']
-  if (headerRaw !== undefined && headerRaw !== '' && headerRaw !== 'undefined' && headerRaw !== 'null') {
-    const parsed = Number(headerRaw)
-    if (!isNaN(parsed) && parsed > 0) return parsed
-  }
-
-  // 3. Query param de fallback (idusuario directo)
-  const queryRaw = req.query.userId || req.query.idusuario
-  if (queryRaw !== undefined && queryRaw !== '') {
-    const parsed = Number(queryRaw)
-    if (!isNaN(parsed) && parsed > 0) return parsed
-  }
-
-  // Nota: ?idclub se resuelve de forma asíncrona directamente en el handler GET
-  return null
-}
-
-/**
- * Resuelve el idusuario a partir de un idclub de negocio.
- * Retorna Number > 0 si el club existe, o null en caso contrario.
+ * Para el rol Club, el frontend puede enviar ?idclub=N además del JWT.
+ * El JWT da el idusuario genérico; el idclub permite resolver eventos
+ * asociados al perfil de negocio del club.
+ * Retorna el idusuario de negocio del club, o null si no se pudo resolver.
  */
 async function resolverUsuarioPorClub(idclub) {
   const parsed = Number(idclub)
@@ -55,37 +26,34 @@ async function resolverUsuarioPorClub(idclub) {
   return (!isNaN(uid) && uid > 0) ? uid : null
 }
 
-/** Responde 401 de forma elegante cuando no hay usuario identificado */
+/** Responde 401 de forma consistente */
 function sinAutenticacion(res, detalle = '') {
   console.warn(`[Calendario] 401 Sin autenticación${detalle ? ': ' + detalle : ''}`)
-  return res.status(StatusCodes.UNAUTHORIZED).json({
-    error:  'No autenticado',
-    detail: 'Incluí el header X-User-Id con el idusuario del usuario en sesión.',
-  })
+  return res.status(StatusCodes.UNAUTHORIZED).json({ error: 'No autenticado', detail: detalle })
 }
 
 // ── GET /api/calendario ───────────────────────────────────────────────────────
-// Devuelve eventos propios del usuario + pruebas automáticas de inscripciones
 router.get('/', async (req, res) => {
   try {
-    // Intentar resolver idusuario directo primero
-    let idUsuario = resolverUsuario(req)
+    // req.usuario viene del JWT verificado por el middleware
+    let idUsuario = req.usuario.idusuario
 
-    // Si no vino x-user-id / userId, intentar resolver por idclub (rol Club)
-    if (!idUsuario && req.query.idclub) {
+    // Si el cliente es un Club y envía ?idclub, resolver el idusuario por la tabla clubes
+    // (permite que el frontend use idclub como referencia de negocio sin exponer idusuario)
+    if (req.query.idclub) {
       console.log(`[GET /api/calendario] Detectado ?idclub=${req.query.idclub}, resolviendo idusuario...`)
-      idUsuario = await resolverUsuarioPorClub(req.query.idclub)
-      if (!idUsuario) {
-        return res.status(StatusCodes.NOT_FOUND).json({
-          error: `No se encontró el club con idclub=${req.query.idclub} o no tiene idusuario asociado.`
-        })
+      const idPorClub = await resolverUsuarioPorClub(req.query.idclub)
+      if (idPorClub) {
+        // Solo sobreescribir si el idusuario del token coincide con el del club (seguridad)
+        if (idPorClub === idUsuario) {
+          idUsuario = idPorClub
+        } else {
+          console.warn(`[GET /api/calendario] idclub=${req.query.idclub} pertenece a idusuario=${idPorClub} pero el token es de idusuario=${idUsuario}`)
+        }
       }
-      console.log(`[GET /api/calendario] idclub=${req.query.idclub} → idusuario resuelto: ${idUsuario}`)
     }
 
-    console.log(`[GET /api/calendario] x-user-id raw="${req.headers['x-user-id']}" → idUsuario resuelto: ${idUsuario}`)
-
-    if (!idUsuario) return sinAutenticacion(res, `header recibido: "${req.headers['x-user-id']}"`)
+    console.log(`[GET /api/calendario] Respondiendo eventos para idusuario=${idUsuario}`)
 
     const eventos = await service.getByUsuario(idUsuario)
 
@@ -101,7 +69,6 @@ router.get('/', async (req, res) => {
       titulo:              e.titulo               || null,
       descripcion:         e.descripcion          || null,
       imagen:              e.imagen               || null,
-      // _datosPrueba: campo extra adjuntado por el repository para pruebas automáticas
       _datosPrueba:        e._datosPrueba         || null,
     }))
 
@@ -114,14 +81,10 @@ router.get('/', async (req, res) => {
 })
 
 // ── POST /api/calendario ──────────────────────────────────────────────────────
-// Crea un evento personalizado. Si viene imagen en base64, la sube al bucket
-// 'fotoCalendario' vía el repositorio y guarda la URL pública en la BD.
 router.post('/', async (req, res) => {
   try {
-    const idUsuario = resolverUsuario(req)
-    console.log(`[POST /api/calendario] idUsuario resuelto: ${idUsuario}`)
-
-    if (!idUsuario) return sinAutenticacion(res)
+    const idUsuario = req.usuario.idusuario
+    console.log(`[POST /api/calendario] idusuario=${idUsuario}`)
 
     const {
       tipo            = 'PERSONALIZADO',
@@ -133,7 +96,7 @@ router.post('/', async (req, res) => {
       idinscripcionempleo = null,
       titulo          = null,
       descripcion     = null,
-      imagen          = null,   // puede ser: data URL base64 | URL pública | null
+      imagen          = null,
     } = req.body
 
     if (!fecha) {
@@ -142,16 +105,9 @@ router.post('/', async (req, res) => {
 
     const evento = await service.crearEvento({
       idusuario: idUsuario,
-      tipo,
-      fecha,
-      horainicio,
-      horafin,
-      idprueba,
-      identrenamiento,
-      idinscripcionempleo,
-      titulo,
-      descripcion,
-      imagen,   // el repository detecta si es base64 y lo sube al storage
+      tipo, fecha, horainicio, horafin,
+      idprueba, identrenamiento, idinscripcionempleo,
+      titulo, descripcion, imagen,
     })
 
     res.status(StatusCodes.CREATED).json({
@@ -162,7 +118,7 @@ router.post('/', async (req, res) => {
       horaFin:     evento.horafin,
       titulo:      evento.titulo,
       descripcion: evento.descripcion,
-      imagen:      evento.imagen,   // URL pública del bucket (o null)
+      imagen:      evento.imagen,
     })
   } catch (error) {
     console.error('[POST /api/calendario] Error:', error)
@@ -171,15 +127,11 @@ router.post('/', async (req, res) => {
 })
 
 // ── PUT /api/calendario/:id ───────────────────────────────────────────────────
-// Edita un evento personalizado (solo si es del usuario autenticado)
 router.put('/:id', async (req, res) => {
   try {
-    const idUsuario = resolverUsuario(req)
-    console.log(`[PUT /api/calendario/${req.params.id}] idUsuario resuelto: ${idUsuario}`)
-
-    if (!idUsuario) return sinAutenticacion(res)
-
+    const idUsuario = req.usuario.idusuario
     const idEvento = Number(req.params.id)
+
     if (isNaN(idEvento) || idEvento <= 0) {
       return res.status(StatusCodes.BAD_REQUEST).json({ error: 'ID de evento inválido' })
     }
@@ -206,21 +158,16 @@ router.put('/:id', async (req, res) => {
 })
 
 // ── DELETE /api/calendario/:id ────────────────────────────────────────────────
-// Borra un evento personalizado. Solo puede hacerlo el dueño.
 router.delete('/:id', async (req, res) => {
   try {
-    const idUsuario = resolverUsuario(req)
-    console.log(`[DELETE /api/calendario/${req.params.id}] idUsuario resuelto: ${idUsuario}`)
-
-    if (!idUsuario) return sinAutenticacion(res)
-
+    const idUsuario = req.usuario.idusuario
     const idEvento = Number(req.params.id)
+
     if (isNaN(idEvento) || idEvento <= 0) {
       return res.status(StatusCodes.BAD_REQUEST).json({ error: 'ID de evento inválido' })
     }
 
     await service.eliminarEvento(idEvento, idUsuario)
-
     res.status(StatusCodes.OK).json({ ok: true, idEvento })
   } catch (error) {
     console.error('[DELETE /api/calendario] Error:', error)

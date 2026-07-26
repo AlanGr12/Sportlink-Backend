@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { StatusCodes } from 'http-status-codes'
 import EntrenamientosService from '../services/entrenamientos-service.js'
 import EntrenamientoXJugador from '../services/entrenamientoxjugador.js'
+import { verificarToken, requiereRol } from '../middlewares/auth-middleware.js'
 import multer from 'multer'
 
 const router = Router()
@@ -46,10 +47,8 @@ router.get('/deporte', async (req, res) => {
   }
 })
 
-// GET /api/entrenamientos/mios?identrenador=N
-// Devuelve SOLO los entrenamientos del entrenador indicado.
-// El frontend del rol ENTRENADOR debe enviar su identrenador numérico.
-router.get('/mios', async (req, res) => {
+// GET /api/entrenamientos/mios?identrenador=N — Solo el entrenador autenticado puede ver sus propios entrenamientos
+router.get('/mios', verificarToken, requiereRol('entrenador'), async (req, res) => {
   try {
     const identrenador = req.query.identrenador
     if (!identrenador || isNaN(Number(identrenador))) {
@@ -66,8 +65,8 @@ router.get('/mios', async (req, res) => {
   }
 })
 
-// POST /api/entrenamientos
-router.post('/', upload.single('imagen'), async (req, res) => {
+// POST /api/entrenamientos — Solo entrenadores pueden crear entrenamientos
+router.post('/', verificarToken, requiereRol('entrenador'), upload.single('imagen'), async (req, res) => {
   try {
     const ent = await service.crearEntrenamiento(req.body, req.file)
     res.status(StatusCodes.CREATED).json(ent)

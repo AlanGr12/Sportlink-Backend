@@ -1,12 +1,13 @@
 import { Router } from 'express'
 import { StatusCodes } from 'http-status-codes'
 import InscripcionesPruebaService from '../services/inscripcionesprueba-service.js'
+import { verificarToken, requiereRol } from '../middlewares/auth-middleware.js'
 
 const router = Router()
 const service = new InscripcionesPruebaService()
 
-// GET /api/inscripcionesprueba
-router.get('/', async (req, res) => {
+// GET /api/inscripcionesprueba — Requiere autenticación
+router.get('/', verificarToken, async (req, res) => {
   try {
     const { idprueba } = req.query
     const list = await service.getAllAsync(idprueba)
@@ -16,8 +17,8 @@ router.get('/', async (req, res) => {
   }
 })
 
-// POST /api/inscripcionesprueba
-router.post('/', async (req, res) => {
+// POST /api/inscripcionesprueba — Solo jugadores pueden inscribirse a pruebas
+router.post('/', verificarToken, requiereRol('jugador'), async (req, res) => {
   try {
     const ins = await service.crearInscripcion(req.body)
     res.status(StatusCodes.CREATED).json(ins)

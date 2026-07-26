@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { StatusCodes } from 'http-status-codes'
 import PruebasService from '../services/pruebas-service.js'
 import PruebaXJugador from '../services/pruebaxjugador.js'
+import { verificarToken, requiereRol } from '../middlewares/auth-middleware.js'
 
 import multer from 'multer'
 
@@ -44,7 +45,8 @@ const upload = multer({
   }
 })
 
-router.post('/crearPrueba', upload.single('imagen'), async (req, res) => {
+// POST /api/pruebas/crearPrueba — Solo clubes pueden crear pruebas
+router.post('/crearPrueba', verificarToken, requiereRol('club'), upload.single('imagen'), async (req, res) => {
   try {
     const prueba = await service.crearPrueba(req.body, req.file)
 

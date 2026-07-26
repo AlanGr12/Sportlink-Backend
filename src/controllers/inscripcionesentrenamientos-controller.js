@@ -1,12 +1,13 @@
 import { Router } from 'express'
 import { StatusCodes } from 'http-status-codes'
 import InscripcionesEntrenamientosService from '../services/inscripcionesentrenamientos-service.js'
+import { verificarToken, requiereRol } from '../middlewares/auth-middleware.js'
 
 const router = Router()
 const service = new InscripcionesEntrenamientosService()
 
-// GET /api/inscripcionesentrenamientos
-router.get('/', async (req, res) => {
+// GET /api/inscripcionesentrenamientos — Requiere autenticación
+router.get('/', verificarToken, async (req, res) => {
   try {
     const identrenamiento = req.query.identrenamiento ? Number(req.query.identrenamiento) : null
     const list = await service.getAllAsync(identrenamiento)
@@ -16,8 +17,8 @@ router.get('/', async (req, res) => {
   }
 })
 
-// POST /api/inscripcionesentrenamientos
-router.post('/', async (req, res) => {
+// POST /api/inscripcionesentrenamientos — Solo jugadores pueden inscribirse a entrenamientos
+router.post('/', verificarToken, requiereRol('jugador'), async (req, res) => {
   try {
     const ins = await service.crearInscripcion(req.body)
     res.status(StatusCodes.CREATED).json(ins)

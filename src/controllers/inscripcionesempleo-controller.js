@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { StatusCodes } from 'http-status-codes'
 import InscripcionesEmpleoService from '../services/inscripcionesempleo-service.js'
+import { verificarToken, requiereRol } from '../middlewares/auth-middleware.js'
 import multer from 'multer'
 
 const router = Router()
@@ -39,8 +40,8 @@ router.get('/:id', async (req, res) => {
   }
 })
 
-// POST /api/inscripcionesempleo/postularse
-router.post('/postularse', upload.single('cv'), async (req, res) => {
+// POST /api/inscripcionesempleo/postularse — Solo entrenadores pueden postularse a empleos
+router.post('/postularse', verificarToken, requiereRol('entrenador'), upload.single('cv'), async (req, res) => {
   try {
     const ins = await service.postularse(req.body, req.file)
     res.status(StatusCodes.CREATED).json(ins)
@@ -49,8 +50,8 @@ router.post('/postularse', upload.single('cv'), async (req, res) => {
   }
 })
 
-// PUT /api/inscripcionesempleo/:id/estado
-router.put('/:id/estado', async (req, res) => {
+// PUT /api/inscripcionesempleo/:id/estado — Solo clubes pueden cambiar el estado de una postulación
+router.put('/:id/estado', verificarToken, requiereRol('club'), async (req, res) => {
   try {
     const ins = await service.actualizarEstado(req.params.id, req.body.estado)
     res.status(StatusCodes.OK).json(ins)
@@ -59,8 +60,8 @@ router.put('/:id/estado', async (req, res) => {
   }
 })
 
-// PUT /api/inscripcionesempleo/:id/contratar
-router.put('/:id/contratar', async (req, res) => {
+// PUT /api/inscripcionesempleo/:id/contratar — Solo clubes pueden marcar como contratado
+router.put('/:id/contratar', verificarToken, requiereRol('club'), async (req, res) => {
   try {
     const ins = await service.marcarContratado(req.params.id)
     res.status(StatusCodes.OK).json(ins)

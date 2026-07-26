@@ -51,6 +51,18 @@ class UsuariosRepository {
 
  }
 
+ /**
+  * Actualiza la contraseña de un usuario (usado para migrar texto plano → bcrypt).
+  */
+ async actualizarContrasenia(idusuario, hashNuevo) {
+   const { error } = await supabase
+     .from('usuarios')
+     .update({ contraseña: hashNuevo })
+     .eq('idusuario', idusuario)
+
+   if (error) throw new Error(error.message)
+ }
+
  async getPerfilByUsuarioAsync(idusuario, tipousuario) {
   let tabla = ''
   if (tipousuario === 'jugador') tabla = 'jugadores'
