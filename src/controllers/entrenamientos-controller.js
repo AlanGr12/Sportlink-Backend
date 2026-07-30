@@ -68,7 +68,7 @@ router.get('/mios', verificarToken, requiereRol('entrenador'), async (req, res) 
 // POST /api/entrenamientos — Solo entrenadores pueden crear entrenamientos
 router.post('/', verificarToken, requiereRol('entrenador'), upload.single('imagen'), async (req, res) => {
   try {
-    const ent = await service.crearEntrenamiento(req.body, req.file)
+    const ent = await service.crearEntrenamiento(req.body, req.file, req.usuario.idusuario)
     res.status(StatusCodes.CREATED).json(ent)
   } catch (error) {
     res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })

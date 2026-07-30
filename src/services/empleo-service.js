@@ -1,4 +1,5 @@
 import EmpleoRepository from '../repositories/empleo-repository.js'
+import chatRepository from '../repositories/chat-repository.js'
 
 class EmpleoService {
   constructor() {
@@ -20,7 +21,7 @@ class EmpleoService {
     return await this.repository.getAllByClubAsync(idclub)
   }
 
-  async crearEmpleo(data) {
+  async crearEmpleo(data, idusuario) {
     const {
       idclub,
       iddeporte,
@@ -50,7 +51,7 @@ class EmpleoService {
     const existe = await this.repository.existeEmpleo(idclub, iddeporte, nombre)
     if (existe) throw { status: 400, message: 'Ya existe una vacante con ese nombre para ese club y deporte' }
 
-    return await this.repository.crearEmpleo(
+    const empleo = await this.repository.crearEmpleo(
       idclub,
       iddeporte,
       nombre,
@@ -59,6 +60,25 @@ class EmpleoService {
       acercaempleo,
       estadoBool
     )
+
+    // Crear grupo de chat para el empleo (no interrumpe si falla)
+    try {
+      const idusuarioAdmin = idusuario ? Number(idusuario) : null
+      await chatRepository.crearConversacionRPC(
+        'GRUPAL',
+        `Empleo: ${nombre}`,
+        null,
+        null,
+        null,
+        empleo.idempleo,
+        idusuarioAdmin ? [idusuarioAdmin] : [],
+        idusuarioAdmin
+      )
+    } catch (errChat) {
+      console.error('[empleo-service] Error creando grupo de chat para empleo:', errChat.message)
+    }
+
+    return empleo
   }
 }
 

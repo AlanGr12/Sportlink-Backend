@@ -2,6 +2,7 @@ import InscripcionesPruebaRepository from '../repositories/inscripcionesprueba-r
 import JugadoresRepository from '../repositories/jugadores-repository.js'
 import PruebasRepository from '../repositories/pruebas-repository.js'
 import CalendarioEventosService from './calendarioeventos-service.js'
+import chatRepository from '../repositories/chat-repository.js'
 
 class InscripcionesPruebaService {
   constructor() {
@@ -21,7 +22,7 @@ class InscripcionesPruebaService {
     return ins
   }
 
-  async crearInscripcion(data) {
+  async crearInscripcion(data, idusuario) {
     const { idjugador, idprueba } = data || {}
 
     if (!idjugador) throw { status: 400, message: 'El id del jugador es obligatorio' }
@@ -50,6 +51,36 @@ class InscripcionesPruebaService {
       }
     } catch (evtErr) {
       console.error('Error creando evento de calendario para inscripción a prueba:', evtErr.message || evtErr)
+    }
+
+    // Agregar al jugador al grupo de chat de la prueba (o crearlo si no existe — auto-reparación)
+    try {
+      const idusuarioJugador = idusuario ? Number(idusuario) : null
+      if (idusuarioJugador) {
+        let idconv = await chatRepository.buscarConversacionPorEvento({ idprueba: Number(idprueba) })
+
+        if (idconv) {
+          // El grupo existe: agregar al jugador como participante (upsert, no duplica)
+          await chatRepository.agregarParticipante(idconv, idusuarioJugador)
+        } else {
+          // Fallback: el grupo no fue creado cuando se creó la prueba → auto-reparar
+          console.warn(`[inscripcionesprueba-service] Grupo de chat no encontrado para idprueba=${idprueba}. Creando ahora...`)
+          const idusuarioCreador = await chatRepository.buscarCreadorEvento({ idprueba: Number(idprueba) })
+          const participantes = idusuarioCreador
+            ? [...new Set([Number(idusuarioCreador), idusuarioJugador])]
+            : [idusuarioJugador]
+          await chatRepository.crearConversacionRPC(
+            'GRUPAL',
+            `Prueba #${idprueba}`,
+            null,
+            Number(idprueba), null, null,
+            participantes,
+            idusuarioCreador ? Number(idusuarioCreador) : null
+          )
+        }
+      }
+    } catch (errChat) {
+      console.error('[inscripcionesprueba-service] Error en chat al inscribirse a prueba:', errChat.message)
     }
 
     return ins

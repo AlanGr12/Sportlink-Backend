@@ -20,7 +20,7 @@ router.get('/', verificarToken, async (req, res) => {
 // POST /api/inscripcionesprueba — Solo jugadores pueden inscribirse a pruebas
 router.post('/', verificarToken, requiereRol('jugador'), async (req, res) => {
   try {
-    const ins = await service.crearInscripcion(req.body)
+    const ins = await service.crearInscripcion(req.body, req.usuario.idusuario)
     res.status(StatusCodes.CREATED).json(ins)
   } catch (error) {
     res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })

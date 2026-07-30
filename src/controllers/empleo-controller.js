@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { StatusCodes } from 'http-status-codes'
 import EmpleoService from '../services/empleo-service.js'
+import { verificarToken, requiereRol } from '../middlewares/auth-middleware.js'
 
 const router = Router()
 const service = new EmpleoService()
@@ -25,10 +26,10 @@ router.get('/club/:idclub', async (req, res) => {
   }
 })
 
-// POST /api/empleo/crearEmpleo
-router.post('/crearEmpleo', async (req, res) => {
+// POST /api/empleo/crearEmpleo — Solo clubes pueden crear empleos
+router.post('/crearEmpleo', verificarToken, requiereRol('club'), async (req, res) => {
   try {
-    const empleo = await service.crearEmpleo(req.body)
+    const empleo = await service.crearEmpleo(req.body, req.usuario.idusuario)
     res.status(StatusCodes.OK).json(empleo)
   } catch (error) {
     res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })

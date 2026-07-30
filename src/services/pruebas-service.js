@@ -1,6 +1,7 @@
 import PruebasRepository from '../repositories/pruebas-repository.js'
 import ClubesRepository from '../repositories/clubes-repository.js'
 import CalendarioEventosService from './calendarioeventos-service.js'
+import chatRepository from '../repositories/chat-repository.js'
 
 class PruebasService {
   constructor() {
@@ -19,7 +20,7 @@ class PruebasService {
     return prueba
   }
 
-  async crearPrueba(data, archivo) {
+  async crearPrueba(data, archivo, idusuario) {
 
   const {
     idclub,
@@ -104,6 +105,23 @@ class PruebasService {
     }
   } catch (evtErr) {
     console.error('Error creando evento de calendario para prueba:', evtErr.message || evtErr)
+  }
+
+  // Crear grupo de chat para la prueba (no interrumpe si falla)
+  try {
+    const idusuarioAdmin = idusuario ? Number(idusuario) : null
+    await chatRepository.crearConversacionRPC(
+      'GRUPAL',
+      `Prueba: ${categoria || 'Nueva Prueba'}`,
+      null,
+      prueba.idprueba,
+      null,
+      null,
+      idusuarioAdmin ? [idusuarioAdmin] : [],
+      idusuarioAdmin
+    )
+  } catch (errChat) {
+    console.error('[pruebas-service] Error creando grupo de chat para prueba:', errChat.message)
   }
 
   return prueba

@@ -3,6 +3,7 @@ import JugadoresRepository from '../repositories/jugadores-repository.js'
 import EntrenamientosRepository from '../repositories/entrenamientos-repository.js'
 import CalendarioEventosService from './calendarioeventos-service.js'
 import supabase from '../configs/supabase-config.js'
+import chatRepository from '../repositories/chat-repository.js'
 
 class InscripcionesEntrenamientosService {
   constructor() {
@@ -21,7 +22,7 @@ class InscripcionesEntrenamientosService {
     return ins
   }
 
-  async crearInscripcion(data) {
+  async crearInscripcion(data, idusuario) {
     const { identrenamiento, idjugador, idjugadorinscripto } = data || {}
 
     // aceptar ambos nombres de campo para conveniencia
@@ -65,6 +66,34 @@ class InscripcionesEntrenamientosService {
       }
     } catch (evtErr) {
       console.error('Error creando evento de calendario para inscripción a entrenamiento:', evtErr.message || evtErr)
+    }
+
+    // Agregar al jugador al grupo de chat del entrenamiento (o crearlo — auto-reparación)
+    try {
+      const idusuarioJugador = idusuario ? Number(idusuario) : null
+      if (idusuarioJugador) {
+        let idconv = await chatRepository.buscarConversacionPorEvento({ identrenamiento: Number(identrenamiento) })
+
+        if (idconv) {
+          await chatRepository.agregarParticipante(idconv, idusuarioJugador)
+        } else {
+          console.warn(`[inscripcionesentrenamientos-service] Grupo de chat no encontrado para identrenamiento=${identrenamiento}. Creando ahora...`)
+          const idusuarioCreador = await chatRepository.buscarCreadorEvento({ identrenamiento: Number(identrenamiento) })
+          const participantes = idusuarioCreador
+            ? [...new Set([Number(idusuarioCreador), idusuarioJugador])]
+            : [idusuarioJugador]
+          await chatRepository.crearConversacionRPC(
+            'GRUPAL',
+            `Entrenamiento #${identrenamiento}`,
+            null,
+            null, Number(identrenamiento), null,
+            participantes,
+            idusuarioCreador ? Number(idusuarioCreador) : null
+          )
+        }
+      }
+    } catch (errChat) {
+      console.error('[inscripcionesentrenamientos-service] Error en chat al inscribirse a entrenamiento:', errChat.message)
     }
 
     return ins

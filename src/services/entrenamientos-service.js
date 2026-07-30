@@ -1,6 +1,7 @@
 import EntrenamientosRepository from '../repositories/entrenamientos-repository.js'
 import EntrenadoresRepository from '../repositories/entrenadores-repository.js'
 import CalendarioEventosService from './calendarioeventos-service.js'
+import chatRepository from '../repositories/chat-repository.js'
 
 class EntrenamientosService {
   constructor() {
@@ -43,7 +44,7 @@ class EntrenamientosService {
     return ent
   }
 
-  async crearEntrenamiento(data, archivo) {
+  async crearEntrenamiento(data, archivo, idusuario) {
     const {
       iddeporte,
       identrenador,
@@ -119,6 +120,25 @@ class EntrenamientosService {
       }
     } catch (evtErr) {
       console.error('Error creando evento de calendario para entrenamiento:', evtErr.message || evtErr)
+    }
+
+    // Crear grupo de chat para el entrenamiento (no interrumpe si falla)
+    // Nota: el FK en conversaciones se llama identrenamiento (sin 's'),
+    // pero el PK devuelto por el repositorio es identrenamientos (con 's')
+    try {
+      const idusuarioAdmin = idusuario ? Number(idusuario) : null
+      await chatRepository.crearConversacionRPC(
+        'GRUPAL',
+        `Entrenamiento: ${titulo}`,
+        null,
+        null,
+        entrenamiento.identrenamientos,  // PK del entrenamiento recien creado
+        null,
+        idusuarioAdmin ? [idusuarioAdmin] : [],
+        idusuarioAdmin
+      )
+    } catch (errChat) {
+      console.error('[entrenamientos-service] Error creando grupo de chat para entrenamiento:', errChat.message)
     }
 
     return entrenamiento

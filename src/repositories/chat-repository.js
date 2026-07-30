@@ -66,9 +66,10 @@ class ChatRepository {
   }
 
   /**
-   * Llama a la función RPC para crear conversación + participantes atómicamente
+   * Llama a la función RPC para crear conversación + participantes atómicamente.
+   * idusuarioAdmin: si se pasa, ese participante queda con esadmin = true en la misma transacción.
    */
-  async crearConversacionRPC(tipo, nombre, foto, idprueba, identrenamiento, idempleo, participantes) {
+  async crearConversacionRPC(tipo, nombre, foto, idprueba, identrenamiento, idempleo, participantes, idusuarioAdmin = null) {
     const { data, error } = await supabase.rpc('crear_conversacion_con_participantes', {
       p_tipo: tipo,
       p_nombre: nombre || null,
@@ -76,12 +77,13 @@ class ChatRepository {
       p_idprueba: idprueba ? Number(idprueba) : null,
       p_identrenamiento: identrenamiento ? Number(identrenamiento) : null,
       p_idempleo: idempleo ? Number(idempleo) : null,
-      p_participantes: participantes
+      p_participantes: participantes,
+      p_idusuario_admin: idusuarioAdmin ? Number(idusuarioAdmin) : null
     })
 
     if (error) throw new Error(error.message)
-    
-    // RPC retorna el UUID de la conversacion
+
+    // RPC retorna el INTEGER id de la conversacion
     const idconversacion = data
 
     // Devolvemos el objeto conversación creado
@@ -117,7 +119,7 @@ class ChatRepository {
     if (error) throw new Error(error.message)
 
     // Formatear la data
-    const resultados = data.map(pc => {
+    const resultados = await Promise.all(data.map(async pc => {
       const conv = pc.conversaciones
       // Obtener ultimo mensaje
       let ultimoMensaje = null
@@ -141,11 +143,35 @@ class ChatRepository {
         // Buscar al 'otro' participante
         const otroParticipante = conv.participantes_conversacion.find(p => Number(p.idusuario) !== Number(idusuario))
         if (otroParticipante) {
+          const tipousuario = otroParticipante.usuarios?.tipousuario
+          let nombre = null
+          let fotoperfil = null
+          
+          if (tipousuario) {
+            let tabla = ''
+            if (tipousuario === 'jugador') tabla = 'jugadores'
+            else if (tipousuario === 'entrenador') tabla = 'entrenadores'
+            else if (tipousuario === 'club') tabla = 'clubes'
+
+            if (tabla) {
+              const { data: perfilData } = await supabase
+                .from(tabla)
+                .select('nombre, fotoperfil')
+                .eq('idusuario', otroParticipante.idusuario)
+                .single()
+                
+              if (perfilData) {
+                nombre = perfilData.nombre
+                fotoperfil = perfilData.fotoperfil
+              }
+            }
+          }
+
           output.otroParticipante = {
             idusuario: otroParticipante.idusuario,
-            // En un caso real haríamos join con jugadores/entrenadores/clubes para el nombre y foto,
-            // Aquí enviamos el tipousuario basico
-            tipousuario: otroParticipante.usuarios?.tipousuario
+            tipousuario,
+            nombre,
+            fotoperfil
           }
         }
       } else {
@@ -153,7 +179,7 @@ class ChatRepository {
       }
 
       return output
-    })
+    }))
 
     // Ordenar por updatedat DESC
     return resultados.sort((a, b) => new Date(b.updatedat) - new Date(a.updatedat))
@@ -207,6 +233,71 @@ class ChatRepository {
       .eq('idconversacion', idconversacion)
 
     if (error) throw new Error(error.message)
+  }
+
+  /**
+   * Busca el idconversacion de un grupo GRUPAL asociado a un evento.
+   * Devuelve null si no existe.
+   */
+  async buscarConversacionPorEvento({ idprueba, identrenamiento, idempleo }) {
+    let query = supabase.from('conversaciones').select('idconversacion').eq('tipo', 'GRUPAL')
+    if (idprueba)        query = query.eq('idprueba', Number(idprueba))
+    if (identrenamiento) query = query.eq('identrenamiento', Number(identrenamiento))
+    if (idempleo)        query = query.eq('idempleo', Number(idempleo))
+    const { data, error } = await query.limit(1)
+    if (error || !data?.length) return null
+    return data[0].idconversacion
+  }
+
+  /**
+   * Agrega un participante a una conversacion existente.
+   * Usa upsert para no duplicar si ya es participante.
+   */
+  async agregarParticipante(idconversacion, idusuario) {
+    const { error } = await supabase
+      .from('participantes_conversacion')
+      .upsert(
+        { idconversacion: Number(idconversacion), idusuario: Number(idusuario), esadmin: false, fechaingreso: new Date().toISOString() },
+        { onConflict: 'idconversacion,idusuario' }
+      )
+    if (error) throw new Error(error.message)
+  }
+
+  /**
+   * Busca el idusuario del creador de un evento dado su FK.
+   * Necesario para el fallback de auto-reparacion en inscripciones.
+   * pruebas -> clubes.idusuario | entrenamientos -> entrenadores.idusuario | empleo -> clubes.idusuario
+   */
+  async buscarCreadorEvento({ idprueba, identrenamiento, idempleo }) {
+    try {
+      if (idprueba) {
+        const { data } = await supabase
+          .from('pruebas')
+          .select('clubes(idusuario)')
+          .eq('idprueba', Number(idprueba))
+          .single()
+        return data?.clubes?.idusuario || null
+      }
+      if (identrenamiento) {
+        const { data } = await supabase
+          .from('entrenamientos')
+          .select('entrenadores(idusuario)')
+          .eq('identrenamientos', Number(identrenamiento))
+          .single()
+        return data?.entrenadores?.idusuario || null
+      }
+      if (idempleo) {
+        const { data } = await supabase
+          .from('empleo')
+          .select('clubes(idusuario)')
+          .eq('idempleo', Number(idempleo))
+          .single()
+        return data?.clubes?.idusuario || null
+      }
+    } catch (err) {
+      console.warn('[chat-repository] buscarCreadorEvento fallo:', err.message)
+    }
+    return null
   }
 }
 

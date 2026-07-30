@@ -48,8 +48,7 @@ const upload = multer({
 // POST /api/pruebas/crearPrueba — Solo clubes pueden crear pruebas
 router.post('/crearPrueba', verificarToken, requiereRol('club'), upload.single('imagen'), async (req, res) => {
   try {
-    const prueba = await service.crearPrueba(req.body, req.file)
-
+    const prueba = await service.crearPrueba(req.body, req.file, req.usuario.idusuario)
     res.status(StatusCodes.OK).json(prueba)
   } catch (error) {
     res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })

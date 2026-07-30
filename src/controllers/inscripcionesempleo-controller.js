@@ -43,7 +43,7 @@ router.get('/:id', async (req, res) => {
 // POST /api/inscripcionesempleo/postularse — Solo entrenadores pueden postularse a empleos
 router.post('/postularse', verificarToken, requiereRol('entrenador'), upload.single('cv'), async (req, res) => {
   try {
-    const ins = await service.postularse(req.body, req.file)
+    const ins = await service.postularse(req.body, req.file, req.usuario.idusuario)
     res.status(StatusCodes.CREATED).json(ins)
   } catch (error) {
     res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
