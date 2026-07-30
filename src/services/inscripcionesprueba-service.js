@@ -65,13 +65,28 @@ class InscripcionesPruebaService {
         } else {
           // Fallback: el grupo no fue creado cuando se creó la prueba → auto-reparar
           console.warn(`[inscripcionesprueba-service] Grupo de chat no encontrado para idprueba=${idprueba}. Creando ahora...`)
+          
+          let nombreCreador = 'Club'
+          const pruebaInfo = await this.pruebasRepo.getByIdAsync(Number(idprueba))
+          if (pruebaInfo) {
+            const club = await this.jugadoresRepo.supabase
+              .from('clubes')
+              .select('nombre')
+              .eq('idclub', pruebaInfo.idclub)
+              .single()
+              .then(res => res.data)
+            if (club && club.nombre) {
+               nombreCreador = club.nombre
+            }
+          }
+
           const idusuarioCreador = await chatRepository.buscarCreadorEvento({ idprueba: Number(idprueba) })
           const participantes = idusuarioCreador
             ? [...new Set([Number(idusuarioCreador), idusuarioJugador])]
             : [idusuarioJugador]
           await chatRepository.crearConversacionRPC(
             'GRUPAL',
-            `Prueba #${idprueba}`,
+            `${nombreCreador} - Prueba`,
             null,
             Number(idprueba), null, null,
             participantes,

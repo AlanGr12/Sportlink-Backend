@@ -127,9 +127,13 @@ class EntrenamientosService {
     // pero el PK devuelto por el repositorio es identrenamientos (con 's')
     try {
       const idusuarioAdmin = idusuario ? Number(idusuario) : null
+      
+      const entrenador = await this.entrenadoresRepo.getByIdAsync(Number(identrenador))
+      const nombreEntrenador = entrenador ? `${entrenador.nombre} ${entrenador.apellido}`.trim() : 'Entrenador'
+
       await chatRepository.crearConversacionRPC(
         'GRUPAL',
-        `Entrenamiento: ${titulo}`,
+        `${nombreEntrenador} - Entrenamiento`,
         null,
         null,
         entrenamiento.identrenamientos,  // PK del entrenamiento recien creado

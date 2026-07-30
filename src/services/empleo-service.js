@@ -64,9 +64,19 @@ class EmpleoService {
     // Crear grupo de chat para el empleo (no interrumpe si falla)
     try {
       const idusuarioAdmin = idusuario ? Number(idusuario) : null
+      
+      // Obtener nombre del club
+      const club = await this.repository.supabase
+        .from('clubes')
+        .select('nombre')
+        .eq('idclub', Number(idclub))
+        .single()
+        .then(res => res.data)
+      const nombreClub = club ? club.nombre : 'Club'
+
       await chatRepository.crearConversacionRPC(
         'GRUPAL',
-        `Empleo: ${nombre}`,
+        `${nombreClub} - Empleo`,
         null,
         null,
         null,

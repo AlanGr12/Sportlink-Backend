@@ -144,7 +144,7 @@ class ChatRepository {
         const otroParticipante = conv.participantes_conversacion.find(p => Number(p.idusuario) !== Number(idusuario))
         if (otroParticipante) {
           const tipousuario = otroParticipante.usuarios?.tipousuario
-          let nombre = null
+          let nombre = 'Usuario' // Fallback si no hay perfil
           let fotoperfil = null
           
           if (tipousuario) {
@@ -161,7 +161,7 @@ class ChatRepository {
                 .single()
                 
               if (perfilData) {
-                nombre = perfilData.nombre
+                if (perfilData.nombre) nombre = perfilData.nombre
                 fotoperfil = perfilData.fotoperfil
               }
             }
@@ -169,7 +169,7 @@ class ChatRepository {
 
           output.otroParticipante = {
             idusuario: otroParticipante.idusuario,
-            tipousuario,
+            tipousuario: tipousuario || 'jugador', // fallback para que badge no quede vacio
             nombre,
             fotoperfil
           }

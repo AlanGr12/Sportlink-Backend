@@ -54,13 +54,28 @@ class InscripcionesEmpleoService {
           await chatRepository.agregarParticipante(idconv, idusuarioEntrenador)
         } else {
           console.warn(`[inscripcionesempleo-service] Grupo de chat no encontrado para idempleo=${idempleo}. Creando ahora...`)
+          
+          let nombreCreador = 'Club'
+          const empleoInfo = await this.repository.getByIdAsync(Number(idempleo))
+          if (empleoInfo) {
+            const club = await supabase
+              .from('clubes')
+              .select('nombre')
+              .eq('idclub', empleoInfo.idclub)
+              .single()
+              .then(res => res.data)
+            if (club && club.nombre) {
+               nombreCreador = club.nombre
+            }
+          }
+
           const idusuarioCreador = await chatRepository.buscarCreadorEvento({ idempleo: Number(idempleo) })
           const participantes = idusuarioCreador
             ? [...new Set([Number(idusuarioCreador), idusuarioEntrenador])]
             : [idusuarioEntrenador]
           await chatRepository.crearConversacionRPC(
             'GRUPAL',
-            `Empleo #${idempleo}`,
+            `${nombreCreador} - Empleo`,
             null,
             null, null, Number(idempleo),
             participantes,

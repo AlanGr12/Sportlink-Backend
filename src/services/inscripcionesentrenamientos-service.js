@@ -78,13 +78,29 @@ class InscripcionesEntrenamientosService {
           await chatRepository.agregarParticipante(idconv, idusuarioJugador)
         } else {
           console.warn(`[inscripcionesentrenamientos-service] Grupo de chat no encontrado para identrenamiento=${identrenamiento}. Creando ahora...`)
+          
+          let nombreCreador = 'Entrenador'
+          const entrenamientosRepo = new EntrenamientosRepository()
+          const entrenamientoInfo = await entrenamientosRepo.getByIdAsync(Number(identrenamiento))
+          if (entrenamientoInfo) {
+            const entrenador = await supabase
+              .from('entrenadores')
+              .select('nombre, apellido')
+              .eq('identrenador', entrenamientoInfo.identrenador)
+              .single()
+              .then(res => res.data)
+            if (entrenador) {
+               nombreCreador = `${entrenador.nombre} ${entrenador.apellido}`.trim()
+            }
+          }
+
           const idusuarioCreador = await chatRepository.buscarCreadorEvento({ identrenamiento: Number(identrenamiento) })
           const participantes = idusuarioCreador
             ? [...new Set([Number(idusuarioCreador), idusuarioJugador])]
             : [idusuarioJugador]
           await chatRepository.crearConversacionRPC(
             'GRUPAL',
-            `Entrenamiento #${identrenamiento}`,
+            `${nombreCreador} - Entrenamiento`,
             null,
             null, Number(identrenamiento), null,
             participantes,

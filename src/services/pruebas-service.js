@@ -110,9 +110,14 @@ class PruebasService {
   // Crear grupo de chat para la prueba (no interrumpe si falla)
   try {
     const idusuarioAdmin = idusuario ? Number(idusuario) : null
+    
+    // Obtener nombre del club
+    const club = await this.clubesRepo.getByIdAsync(Number(idclub))
+    const nombreClub = club ? club.nombre : 'Club'
+
     await chatRepository.crearConversacionRPC(
       'GRUPAL',
-      `Prueba: ${categoria || 'Nueva Prueba'}`,
+      `${nombreClub} - Prueba`,
       null,
       prueba.idprueba,
       null,
