@@ -23,18 +23,19 @@ class InscripcionesEntrenamientosService {
   }
 
   async crearInscripcion(data, idusuario) {
-    const { identrenamiento, idjugador, idjugadorinscripto } = data || {}
+    const { identrenamiento, identrenamientos, idjugador, idjugadorinscripto } = data || {}
 
-    // aceptar ambos nombres de campo para conveniencia
+    // Aceptar ambos nombres de campo para conveniencia (identrenamiento o identrenamientos)
+    const entrenamientoId = identrenamiento || identrenamientos
     const jugadorId = idjugador || idjugadorinscripto
 
-    if (!identrenamiento) throw { status: 400, message: 'El id del entrenamiento es obligatorio' }
+    if (!entrenamientoId) throw { status: 400, message: 'El id del entrenamiento es obligatorio' }
     if (!jugadorId) throw { status: 400, message: 'El id del jugador es obligatorio' }
 
-    const existe = await this.repository.isInscrito(identrenamiento, jugadorId)
+    const existe = await this.repository.isInscrito(entrenamientoId, jugadorId)
     if (existe) throw { status: 400, message: 'El jugador ya está inscripto en este entrenamiento' }
 
-    const ins = await this.repository.crearInscripcion(identrenamiento, jugadorId)
+    const ins = await this.repository.crearInscripcion(entrenamientoId, jugadorId)
 
     // Intentar crear evento en calendario para el entrenamiento
     try {
@@ -60,7 +61,7 @@ class InscripcionesEntrenamientosService {
           horainicio: horario ? horario.horainicio : null,
           horafin: horario ? horario.horafin : null,
           idprueba: null,
-          identrenamiento: identrenamiento,
+          identrenamiento: entrenamientoId,
           idinscripcionempleo: null
         })
       }
@@ -72,16 +73,20 @@ class InscripcionesEntrenamientosService {
     try {
       const idusuarioJugador = idusuario ? Number(idusuario) : null
       if (idusuarioJugador) {
-        let idconv = await chatRepository.buscarConversacionPorEvento({ identrenamiento: Number(identrenamiento) })
+        console.log(`[DEBUG CHAT] Valor de entrenamientoId original: ${entrenamientoId} (tipo: ${typeof entrenamientoId})`)
+        console.log(`[DEBUG CHAT] Llamando a buscarConversacionPorEvento con: { identrenamiento: ${Number(entrenamientoId)} }`)
+        
+        let idconv = await chatRepository.buscarConversacionPorEvento({ identrenamiento: Number(entrenamientoId) })
+        console.log(`[DEBUG CHAT] Resultado idconv: ${idconv}`)
 
         if (idconv) {
           await chatRepository.agregarParticipante(idconv, idusuarioJugador)
         } else {
-          console.warn(`[inscripcionesentrenamientos-service] Grupo de chat no encontrado para identrenamiento=${identrenamiento}. Creando ahora...`)
+          console.warn(`[inscripcionesentrenamientos-service] ADVERTENCIA: Grupo de chat no encontrado para identrenamiento=${entrenamientoId}. Creando ahora (auto-reparación)...`)
           
           let nombreCreador = 'Entrenador'
           const entrenamientosRepo = new EntrenamientosRepository()
-          const entrenamientoInfo = await entrenamientosRepo.getByIdAsync(Number(identrenamiento))
+          const entrenamientoInfo = await entrenamientosRepo.getByIdAsync(Number(entrenamientoId))
           if (entrenamientoInfo) {
             const entrenador = await supabase
               .from('entrenadores')
@@ -94,7 +99,7 @@ class InscripcionesEntrenamientosService {
             }
           }
 
-          const idusuarioCreador = await chatRepository.buscarCreadorEvento({ identrenamiento: Number(identrenamiento) })
+          const idusuarioCreador = await chatRepository.buscarCreadorEvento({ identrenamiento: Number(entrenamientoId) })
           const participantes = idusuarioCreador
             ? [...new Set([Number(idusuarioCreador), idusuarioJugador])]
             : [idusuarioJugador]
@@ -102,7 +107,7 @@ class InscripcionesEntrenamientosService {
             'GRUPAL',
             `${nombreCreador} - Entrenamiento`,
             null,
-            null, Number(identrenamiento), null,
+            null, Number(entrenamientoId), null,
             participantes,
             idusuarioCreador ? Number(idusuarioCreador) : null
           )
