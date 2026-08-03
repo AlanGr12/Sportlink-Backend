@@ -5,7 +5,17 @@ class ChatService {
    * Obtiene la lista de conversaciones del usuario autenticado
    */
   async obtenerConversacionesUsuario(idusuario) {
-    return await chatRepository.obtenerConversacionesUsuario(idusuario)
+    const conversaciones = await chatRepository.obtenerConversacionesUsuario(idusuario)
+    
+    // Enriquecer con el conteo de no leídos
+    const conversacionesConNoLeidos = await Promise.all(
+      conversaciones.map(async (conv) => {
+        const noleidos = await chatRepository.obtenerConteoNoLeidos(conv.idconversacion, idusuario)
+        return { ...conv, noleidos }
+      })
+    )
+    
+    return conversacionesConNoLeidos
   }
 
   /**
@@ -76,7 +86,19 @@ class ChatService {
       throw new Error('Acceso denegado. No perteneces a esta conversación.')
     }
 
-    return await chatRepository.obtenerMensajes(idconversacion, limite, offset)
+    // Pasamos idusuario para calcular el flag 'leido'
+    return await chatRepository.obtenerMensajes(idconversacion, idusuario, limite, offset)
+  }
+
+  /**
+   * Marca los mensajes de una conversación como leídos por un usuario
+   */
+  async marcarLeido(idconversacion, idusuario) {
+    const esPart = await chatRepository.esParticipante(idconversacion, idusuario)
+    if (!esPart) {
+      throw new Error('Acceso denegado. No perteneces a esta conversación.')
+    }
+    await chatRepository.marcarMensajesComoLeidos(idconversacion, idusuario)
   }
 
   /**

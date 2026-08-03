@@ -186,21 +186,100 @@ class ChatRepository {
   }
 
   /**
+   * Marca como leídos todos los mensajes de una conversación para un usuario
+   */
+  async marcarMensajesComoLeidos(idconversacion, idusuario) {
+    const { data: mensajes, error: errorBuscando } = await supabase
+      .from('mensajes')
+      .select(`idmensaje, mensajes_leidos(idusuario)`)
+      .eq('idconversacion', idconversacion)
+      .neq('idusuarioemisor', idusuario)
+
+    if (errorBuscando) throw new Error(errorBuscando.message)
+
+    const idsParaMarcar = mensajes
+      .filter(m => !m.mensajes_leidos || !m.mensajes_leidos.some(ml => Number(ml.idusuario) === Number(idusuario)))
+      .map(m => m.idmensaje)
+
+    if (idsParaMarcar.length > 0) {
+      const registros = idsParaMarcar.map(idmensaje => ({
+        idmensaje,
+        idusuario: Number(idusuario),
+        fechalectura: new Date().toISOString()
+      }))
+
+      const { error: errorInsert } = await supabase
+        .from('mensajes_leidos')
+        .upsert(registros, { onConflict: 'idmensaje,idusuario', ignoreDuplicates: true })
+
+      if (errorInsert) throw new Error(errorInsert.message)
+    }
+  }
+
+  /**
+   * Retorna la cantidad de mensajes sin leer en una conversación para un usuario
+   */
+  async obtenerConteoNoLeidos(idconversacion, idusuario) {
+    try {
+      const { data, error } = await supabase
+        .from('mensajes')
+        .select(`idmensaje, mensajes_leidos(idusuario)`)
+        .eq('idconversacion', idconversacion)
+        .neq('idusuarioemisor', idusuario)
+
+      if (error) {
+        console.warn(`[chat-repository] obtenerConteoNoLeidos error en conv ${idconversacion}:`, error.message)
+        return 0 // Fallback seguro: no bloquear la lista por un error de conteo
+      }
+
+      const noLeidos = data.filter(m =>
+        !m.mensajes_leidos ||
+        !m.mensajes_leidos.some(ml => Number(ml.idusuario) === Number(idusuario))
+      ).length
+
+      return noLeidos
+    } catch (err) {
+      console.warn(`[chat-repository] obtenerConteoNoLeidos excepcion en conv ${idconversacion}:`, err.message)
+      return 0
+    }
+  }
+
+  /**
    * Obtener historial de mensajes
    */
-  async obtenerMensajes(idconversacion, limite = 50, offset = 0) {
+  async obtenerMensajes(idconversacion, idusuarioLogueado, limite = 50, offset = 0) {
     const { data, error } = await supabase
       .from('mensajes')
-      .select('*')
+      .select(`
+        *,
+        mensajes_leidos ( idusuario, fechalectura )
+      `)
       .eq('idconversacion', idconversacion)
-      .eq('eliminado', false)
       .order('createdat', { ascending: false }) // Traemos los más recientes primero para paginar bien
       .range(offset, offset + limite - 1)
 
-    if (error) throw new Error(error.message)
+    // PGRST103 = "Requested range not satisfiable" (la conversación tiene 0 mensajes o menos que el offset)
+    // En ese caso devolvemos array vacío sin tirar error
+    if (error) {
+      if (error.code === 'PGRST103') return []
+      throw new Error(error.message)
+    }
+    
+    // Calcular el flag leido y limpiar mensajes_leidos raw
+    const mensajesConEstado = (data || []).map(msg => {
+      let leido = false
+      if (msg.mensajes_leidos && Array.isArray(msg.mensajes_leidos)) {
+        if (Number(msg.idusuarioemisor) === Number(idusuarioLogueado)) {
+          leido = msg.mensajes_leidos.some(ml => Number(ml.idusuario) !== Number(idusuarioLogueado))
+        } else {
+          leido = msg.mensajes_leidos.some(ml => Number(ml.idusuario) === Number(idusuarioLogueado))
+        }
+      }
+      return { ...msg, leido, mensajes_leidos: undefined }
+    })
     
     // Luego los devolvemos en orden cronológico (los más viejos arriba en el chat)
-    return data.reverse()
+    return mensajesConEstado.reverse()
   }
 
   /**

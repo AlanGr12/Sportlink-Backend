@@ -22,4 +22,7 @@ router.get('/:idconversacion/mensajes', chatController.getMensajes)
 // Enviar un mensaje a una conversación
 router.post('/:idconversacion/mensajes', chatController.postMensaje)
 
+// Marcar mensajes como leídos en una conversación
+router.post('/:idconversacion/leer', chatController.postMarcarLeido)
+
 export default router

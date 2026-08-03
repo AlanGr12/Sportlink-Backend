@@ -130,6 +130,28 @@ class ChatController {
       })
     }
   }
+
+  // POST /api/conversaciones/:idconversacion/leer
+  async postMarcarLeido(req, res) {
+    try {
+      const idusuario = req.usuario.idusuario
+      const { idconversacion } = req.params
+
+      await chatService.marcarLeido(Number(idconversacion), idusuario)
+      res.status(StatusCodes.OK).json({ success: true })
+    } catch (err) {
+      console.error('[chat-controller] postMarcarLeido error:', err)
+      
+      const status = err.message.includes('Acceso denegado')
+        ? StatusCodes.FORBIDDEN
+        : StatusCodes.INTERNAL_SERVER_ERROR
+
+      res.status(status).json({
+        error: 'Error al marcar como leído',
+        detail: err.message
+      })
+    }
+  }
 }
 
 export default new ChatController()
