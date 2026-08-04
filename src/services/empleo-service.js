@@ -1,5 +1,6 @@
 import EmpleoRepository from '../repositories/empleo-repository.js'
 import chatRepository from '../repositories/chat-repository.js'
+import supabase from '../configs/supabase-config.js'
 
 class EmpleoService {
   constructor() {
@@ -65,18 +66,18 @@ class EmpleoService {
     try {
       const idusuarioAdmin = idusuario ? Number(idusuario) : null
       
-      // Obtener nombre del club
-      const club = await this.repository.supabase
+      // Obtener nombre del club usando supabase directamente
+      // (no via this.repository.supabase, que no es una propiedad pública del repositorio)
+      const { data: clubData } = await supabase
         .from('clubes')
         .select('nombre')
         .eq('idclub', Number(idclub))
         .single()
-        .then(res => res.data)
-      const nombreClub = club ? club.nombre : 'Club'
+      const nombreClub = clubData?.nombre || 'Club'
 
       await chatRepository.crearConversacionRPC(
         'GRUPAL',
-        `${nombreClub} - Empleo`,
+        `${nombreClub} - Empleo: ${nombre}`,
         null,
         null,
         null,

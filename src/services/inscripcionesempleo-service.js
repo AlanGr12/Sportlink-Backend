@@ -69,13 +69,14 @@ class InscripcionesEmpleoService {
             }
           }
 
+          const nombreEmpleo = empleoInfo?.nombre || 'Empleo'
           const idusuarioCreador = await chatRepository.buscarCreadorEvento({ idempleo: Number(idempleo) })
           const participantes = idusuarioCreador
             ? [...new Set([Number(idusuarioCreador), idusuarioEntrenador])]
             : [idusuarioEntrenador]
           await chatRepository.crearConversacionRPC(
             'GRUPAL',
-            `${nombreCreador} - Empleo`,
+            `${nombreCreador} - Empleo: ${nombreEmpleo}`,
             null,
             null, null, Number(idempleo),
             participantes,

@@ -3,6 +3,7 @@ import JugadoresRepository from '../repositories/jugadores-repository.js'
 import PruebasRepository from '../repositories/pruebas-repository.js'
 import CalendarioEventosService from './calendarioeventos-service.js'
 import chatRepository from '../repositories/chat-repository.js'
+import supabase from '../configs/supabase-config.js'
 
 class InscripcionesPruebaService {
   constructor() {
@@ -69,24 +70,25 @@ class InscripcionesPruebaService {
           let nombreCreador = 'Club'
           const pruebaInfo = await this.pruebasRepo.getByIdAsync(Number(idprueba))
           if (pruebaInfo) {
-            const club = await this.jugadoresRepo.supabase
+            // Usar supabase directamente (this.jugadoresRepo.supabase no es propiedad pública)
+            const { data: clubData } = await supabase
               .from('clubes')
               .select('nombre')
               .eq('idclub', pruebaInfo.idclub)
               .single()
-              .then(res => res.data)
-            if (club && club.nombre) {
-               nombreCreador = club.nombre
+            if (clubData?.nombre) {
+               nombreCreador = clubData.nombre
             }
           }
 
+          const categoriaPrueba = pruebaInfo?.categoria || 'General'
           const idusuarioCreador = await chatRepository.buscarCreadorEvento({ idprueba: Number(idprueba) })
           const participantes = idusuarioCreador
             ? [...new Set([Number(idusuarioCreador), idusuarioJugador])]
             : [idusuarioJugador]
           await chatRepository.crearConversacionRPC(
             'GRUPAL',
-            `${nombreCreador} - Prueba`,
+            `${nombreCreador} - Prueba: ${categoriaPrueba}`,
             null,
             Number(idprueba), null, null,
             participantes,

@@ -117,7 +117,7 @@ class PruebasService {
 
     await chatRepository.crearConversacionRPC(
       'GRUPAL',
-      `${nombreClub} - Prueba`,
+      `${nombreClub} - Prueba: ${categoria || 'General'}`,
       null,
       prueba.idprueba,
       null,
