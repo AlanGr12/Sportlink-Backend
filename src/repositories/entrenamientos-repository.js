@@ -2,6 +2,17 @@ import supabase from '../configs/supabase-config.js'
 import Entrenamiento from '../entities/entrenamiento.js'
 
 class EntrenamientosRepository {
+
+  // Convierte el nombre de archivo en URL pública completa de Supabase.
+  // Si ya es una URL completa (comienza con http) la deja igual.
+  // Mismo patrón que #normalizarImagen en pruebas-repository.
+  #normalizarImagen(e) {
+    if (e.imagen && !e.imagen.startsWith('http')) {
+      e.imagen = `${process.env.SUPABASE_URL}/storage/v1/object/public/fotoEntrenamientos/${e.imagen}`
+    }
+    return e
+  }
+
   async getAllAsync() {
     const { data, error } = await supabase
       .from('entrenamientos')
@@ -13,7 +24,7 @@ class EntrenamientosRepository {
 
     if (error) throw new Error(error.message)
 
-    return data.map(e => new Entrenamiento(e))
+    return data.map(e => new Entrenamiento(this.#normalizarImagen(e)))
   }
 
   async getAllAsyncWithFilters(filters = {}) {
@@ -37,7 +48,7 @@ class EntrenamientosRepository {
 
     if (error) throw new Error(error.message)
 
-    return data.map(e => new Entrenamiento(e))
+    return data.map(e => new Entrenamiento(this.#normalizarImagen(e)))
   }
 
   async getByIdAsync(id) {
@@ -54,7 +65,7 @@ class EntrenamientosRepository {
     if (error) throw new Error(error.message)
     if (!data) return null
 
-    return new Entrenamiento(data)
+    return new Entrenamiento(this.#normalizarImagen(data))
   }
   async getAllDeporteAsync(jugador) {
     const { data, error } = await supabase
@@ -69,7 +80,7 @@ class EntrenamientosRepository {
     if (error) throw new Error(error.message)
     if (!data) return []
 
-    return data.map(e => new Entrenamiento(e))
+    return data.map(e => new Entrenamiento(this.#normalizarImagen(e)))
   }
 
   async crearEntrenamiento(iddeporte, identrenador, precio, cantidad, titulo, imagen, ubicacion, fechaentr, estado, descripcion, genero, nivel) {
@@ -94,22 +105,26 @@ class EntrenamientosRepository {
 
     if (error) throw new Error(error.message)
 
-    return new Entrenamiento(data)
+    return new Entrenamiento(this.#normalizarImagen(data))
   }
 
   async subirImagenEntrenamientoAsync(archivo) {
     const nombreUnico = `entrenamientos/${Date.now()}-${archivo.originalname}`
 
     const { error } = await supabase.storage
-      .from('fotoPruebas')
+      .from('fotoEntrenamientos')    // ← corregido: era 'fotoPruebas' por error
       .upload(nombreUnico, archivo.buffer, { contentType: archivo.mimetype })
 
-    if (error) throw new Error(error.message)
+    if (error) {
+      console.error('[entrenamientos-repository] Error al subir imagen a fotoEntrenamientos:', error.message)
+      throw new Error(error.message)
+    }
 
     const { data } = supabase.storage
-      .from('fotoPruebas')
+      .from('fotoEntrenamientos')
       .getPublicUrl(nombreUnico)
 
+    console.log('[entrenamientos-repository] Imagen subida OK. URL pública:', data.publicUrl)
     return data.publicUrl
   }
 }
