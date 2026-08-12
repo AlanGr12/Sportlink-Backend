@@ -37,14 +37,43 @@ class PublicacionesService {
       throw { status: 400, message: 'Tipo de publicación inválido' }
     }
 
-    if (tipopublicacion === 'PRUEBA' && !idprueba) {
-      throw { status: 400, message: 'Se requiere idprueba para el tipo PRUEBA' }
+    if (tipopublicacion === 'NORMAL') {
+      if (idprueba || identrenamiento || idempleo) {
+        throw { status: 400, message: 'Una publicación NORMAL no puede tener referencias' }
+      }
     }
-    if (tipopublicacion === 'ENTRENAMIENTO' && !identrenamiento) {
-      throw { status: 400, message: 'Se requiere identrenamiento para el tipo ENTRENAMIENTO' }
+
+    if (tipopublicacion === 'PRUEBA') {
+      if (!idprueba) throw { status: 400, message: 'Se requiere idprueba para el tipo PRUEBA' }
+      if (identrenamiento || idempleo) throw { status: 400, message: 'No se permiten referencias incompatibles para PRUEBA' }
+      
+      const owner = await PublicacionesRepository.getPruebaOwnerAsync(idprueba)
+      if (!owner) throw { status: 404, message: 'La prueba no existe' }
+      if (Number(owner.clubes?.idusuario) !== Number(idusuario)) {
+        throw { status: 403, message: 'No tienes permiso para publicar esta prueba' }
+      }
     }
-    if (tipopublicacion === 'EMPLEO' && !idempleo) {
-      throw { status: 400, message: 'Se requiere idempleo para el tipo EMPLEO' }
+
+    if (tipopublicacion === 'ENTRENAMIENTO') {
+      if (!identrenamiento) throw { status: 400, message: 'Se requiere identrenamiento para el tipo ENTRENAMIENTO' }
+      if (idprueba || idempleo) throw { status: 400, message: 'No se permiten referencias incompatibles para ENTRENAMIENTO' }
+      
+      const owner = await PublicacionesRepository.getEntrenamientoOwnerAsync(identrenamiento)
+      if (!owner) throw { status: 404, message: 'El entrenamiento no existe' }
+      if (Number(owner.entrenadores?.idusuario) !== Number(idusuario)) {
+        throw { status: 403, message: 'No tienes permiso para publicar este entrenamiento' }
+      }
+    }
+
+    if (tipopublicacion === 'EMPLEO') {
+      if (!idempleo) throw { status: 400, message: 'Se requiere idempleo para el tipo EMPLEO' }
+      if (idprueba || identrenamiento) throw { status: 400, message: 'No se permiten referencias incompatibles para EMPLEO' }
+      
+      const owner = await PublicacionesRepository.getEmpleoOwnerAsync(idempleo)
+      if (!owner) throw { status: 404, message: 'El empleo no existe' }
+      if (Number(owner.clubes?.idusuario) !== Number(idusuario)) {
+        throw { status: 403, message: 'No tienes permiso para publicar este empleo' }
+      }
     }
 
     let imagenUrl = imagen || null
@@ -56,9 +85,9 @@ class PublicacionesService {
       idusuario,
       contenido,
       tipopublicacion,
-      idprueba: idprueba ? Number(idprueba) : null,
-      identrenamiento: identrenamiento ? Number(identrenamiento) : null,
-      idempleo: idempleo ? Number(idempleo) : null,
+      idprueba: tipopublicacion === 'PRUEBA' ? Number(idprueba) : null,
+      identrenamiento: tipopublicacion === 'ENTRENAMIENTO' ? Number(identrenamiento) : null,
+      idempleo: tipopublicacion === 'EMPLEO' ? Number(idempleo) : null,
       imagen: imagenUrl
     }
 

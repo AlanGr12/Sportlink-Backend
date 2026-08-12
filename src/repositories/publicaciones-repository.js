@@ -65,7 +65,7 @@ class PublicacionesRepository {
     if (pub.tipopublicacion === 'ENTRENAMIENTO' && pub.identrenamiento) {
       const { data } = await supabase
         .from('entrenamientos')
-        .select('titulo, ubicacion, fecha')
+        .select('identrenamientos, titulo, ubicacion, fechaentr, precio, nivel, genero')
         .eq('identrenamientos', pub.identrenamiento)
         .single()
       return data || null
@@ -74,7 +74,7 @@ class PublicacionesRepository {
     if (pub.tipopublicacion === 'EMPLEO' && pub.idempleo) {
       const { data } = await supabase
         .from('empleo')
-        .select('titulo, ubicacion, modalidad')
+        .select('idempleo, nombre, horasreq, habilidadesreq, acercaempleo, fechapublicacion')
         .eq('idempleo', pub.idempleo)
         .single()
       return data || null
@@ -100,6 +100,33 @@ class PublicacionesRepository {
       updatedat: pub.updatedat,
       referencia
     }
+  }
+
+  async getPruebaOwnerAsync(idprueba) {
+    const { data } = await supabase
+      .from('pruebas')
+      .select('clubes(idusuario)')
+      .eq('idprueba', idprueba)
+      .single()
+    return data
+  }
+
+  async getEntrenamientoOwnerAsync(identrenamiento) {
+    const { data } = await supabase
+      .from('entrenamientos')
+      .select('entrenadores(idusuario)')
+      .eq('identrenamientos', identrenamiento)
+      .single()
+    return data
+  }
+
+  async getEmpleoOwnerAsync(idempleo) {
+    const { data } = await supabase
+      .from('empleo')
+      .select('clubes(idusuario)')
+      .eq('idempleo', idempleo)
+      .single()
+    return data
   }
 
   async getAllAsync(page = 1, limit = 20) {
