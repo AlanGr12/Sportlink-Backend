@@ -152,6 +152,48 @@ class ChatController {
       })
     }
   }
+
+  // PUT /api/conversaciones/:idconversacion/mensajes/:idmensaje
+  async putMensaje(req, res) {
+    try {
+      const idusuarioemisor = req.usuario.idusuario
+      const { idconversacion, idmensaje } = req.params
+      const { contenido } = req.body
+
+      const mensaje = await chatService.editarMensaje(Number(idconversacion), idusuarioemisor, Number(idmensaje), contenido)
+      res.status(StatusCodes.OK).json(mensaje)
+    } catch (err) {
+      console.error('[chat-controller] putMensaje error:', err)
+      let status = StatusCodes.INTERNAL_SERVER_ERROR
+      if (err.message.includes('Acceso denegado')) status = StatusCodes.FORBIDDEN
+      if (err.message.includes('vacío')) status = StatusCodes.BAD_REQUEST
+
+      res.status(status).json({
+        error: 'Error al editar mensaje',
+        detail: err.message
+      })
+    }
+  }
+
+  // DELETE /api/conversaciones/:idconversacion/mensajes/:idmensaje
+  async deleteMensaje(req, res) {
+    try {
+      const idusuarioemisor = req.usuario.idusuario
+      const { idconversacion, idmensaje } = req.params
+
+      await chatService.eliminarMensaje(Number(idconversacion), idusuarioemisor, Number(idmensaje))
+      res.status(StatusCodes.OK).json({ success: true })
+    } catch (err) {
+      console.error('[chat-controller] deleteMensaje error:', err)
+      let status = StatusCodes.INTERNAL_SERVER_ERROR
+      if (err.message.includes('Acceso denegado')) status = StatusCodes.FORBIDDEN
+
+      res.status(status).json({
+        error: 'Error al eliminar mensaje',
+        detail: err.message
+      })
+    }
+  }
 }
 
 export default new ChatController()

@@ -303,6 +303,33 @@ class ChatRepository {
   }
 
   /**
+   * Actualiza el contenido de un mensaje y cambia su tipo a EDITADO
+   */
+  async actualizarMensaje(idmensaje, contenido) {
+    const { data, error } = await supabase
+      .from('mensajes')
+      .update({ contenido, tipomensaje: 'EDITADO' })
+      .eq('idmensaje', idmensaje)
+      .select()
+      .single()
+
+    if (error) throw new Error(error.message)
+    return data
+  }
+
+  /**
+   * Elimina lógicamente un mensaje
+   */
+  async eliminarMensaje(idmensaje) {
+    const { error } = await supabase
+      .from('mensajes')
+      .update({ contenido: '', tipomensaje: 'ELIMINADO' })
+      .eq('idmensaje', idmensaje)
+
+    if (error) throw new Error(error.message)
+  }
+
+  /**
    * Actualiza el updatedat de la conversación
    */
   async actualizarUpdatedAtConversacion(idconversacion) {

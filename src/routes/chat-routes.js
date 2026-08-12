@@ -25,4 +25,10 @@ router.post('/:idconversacion/mensajes', chatController.postMensaje)
 // Marcar mensajes como leídos en una conversación
 router.post('/:idconversacion/leer', chatController.postMarcarLeido)
 
+// Editar un mensaje
+router.put('/:idconversacion/mensajes/:idmensaje', chatController.putMensaje)
+
+// Eliminar un mensaje
+router.delete('/:idconversacion/mensajes/:idmensaje', chatController.deleteMensaje)
+
 export default router

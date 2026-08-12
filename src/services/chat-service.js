@@ -129,6 +129,31 @@ class ChatService {
 
     return mensajeCreado
   }
+
+  /**
+   * Edita el contenido de un mensaje
+   */
+  async editarMensaje(idconversacion, idusuarioemisor, idmensaje, contenido) {
+    if (!contenido || contenido.trim() === '') {
+      throw new Error('El contenido del mensaje no puede estar vacío.')
+    }
+    const esPart = await chatRepository.esParticipante(idconversacion, idusuarioemisor)
+    if (!esPart) {
+      throw new Error('Acceso denegado. No perteneces a esta conversación.')
+    }
+    return await chatRepository.actualizarMensaje(idmensaje, contenido)
+  }
+
+  /**
+   * Elimina un mensaje
+   */
+  async eliminarMensaje(idconversacion, idusuarioemisor, idmensaje) {
+    const esPart = await chatRepository.esParticipante(idconversacion, idusuarioemisor)
+    if (!esPart) {
+      throw new Error('Acceso denegado. No perteneces a esta conversación.')
+    }
+    await chatRepository.eliminarMensaje(idmensaje)
+  }
 }
 
 export default new ChatService()
