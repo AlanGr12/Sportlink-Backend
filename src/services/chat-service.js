@@ -141,7 +141,7 @@ class ChatService {
     if (!esPart) {
       throw new Error('Acceso denegado. No perteneces a esta conversación.')
     }
-    return await chatRepository.actualizarMensaje(idmensaje, contenido)
+    return await chatRepository.actualizarMensaje(idmensaje, idusuarioemisor, contenido)
   }
 
   /**
@@ -152,7 +152,7 @@ class ChatService {
     if (!esPart) {
       throw new Error('Acceso denegado. No perteneces a esta conversación.')
     }
-    await chatRepository.eliminarMensaje(idmensaje)
+    return await chatRepository.eliminarMensaje(idmensaje, idusuarioemisor)
   }
 }
 

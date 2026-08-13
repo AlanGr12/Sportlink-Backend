@@ -181,8 +181,8 @@ class ChatController {
       const idusuarioemisor = req.usuario.idusuario
       const { idconversacion, idmensaje } = req.params
 
-      await chatService.eliminarMensaje(Number(idconversacion), idusuarioemisor, Number(idmensaje))
-      res.status(StatusCodes.OK).json({ success: true })
+      const mensajeEliminado = await chatService.eliminarMensaje(Number(idconversacion), idusuarioemisor, Number(idmensaje))
+      res.status(StatusCodes.OK).json({ success: true, mensaje: mensajeEliminado })
     } catch (err) {
       console.error('[chat-controller] deleteMensaje error:', err)
       let status = StatusCodes.INTERNAL_SERVER_ERROR
