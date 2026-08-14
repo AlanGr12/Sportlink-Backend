@@ -54,6 +54,17 @@ class InscripcionesEntrenamientosRepository {
     return Array.isArray(data) && data.length > 0
   }
 
+  async borrarInscripcion(identrenamiento, idjugador) {
+    const { error } = await supabase
+      .from('inscripcionesentrenamientos')
+      .delete()
+      .eq('identrenamiento', identrenamiento)
+      .eq('idjugadorinscripto', idjugador)
+
+    if (error) throw new Error(error.message)
+    return true
+  }
+
   async crearInscripcion(identrenamiento, idjugador) {
     const { data, error } = await supabase
       .from('inscripcionesentrenamientos')

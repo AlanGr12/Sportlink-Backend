@@ -119,6 +119,55 @@ class InscripcionesEntrenamientosService {
 
     return ins
   }
+
+  async borrarInscripcion(identrenamiento, idusuario) {
+    if (!identrenamiento) throw { status: 400, message: 'El id del entrenamiento es obligatorio' }
+
+    const { data: jugadorData, error: errJugador } = await supabase
+      .from('jugadores')
+      .select('idjugador')
+      .eq('idusuario', idusuario)
+      .single()
+
+    if (errJugador || !jugadorData) {
+      throw { status: 404, message: 'Jugador no encontrado para este usuario' }
+    }
+
+    const idjugador = jugadorData.idjugador
+
+    const existe = await this.repository.isInscrito(identrenamiento, idjugador)
+    if (!existe) throw { status: 400, message: 'El jugador no está inscripto en este entrenamiento' }
+
+    await this.repository.borrarInscripcion(identrenamiento, idjugador)
+
+    // Borrar evento de calendario
+    try {
+      await supabase
+        .from('calendarioeventos')
+        .delete()
+        .eq('idusuario', idusuario)
+        .eq('tipo', 'ENTRENAMIENTO')
+        .eq('identrenamiento', identrenamiento)
+    } catch (evtErr) {
+      console.error('Error eliminando evento de calendario:', evtErr.message || evtErr)
+    }
+
+    // Remover al jugador del grupo de chat
+    try {
+      const idconv = await chatRepository.buscarConversacionPorEvento({ identrenamiento: Number(identrenamiento) })
+      if (idconv) {
+         await supabase
+           .from('participantes_conversacion')
+           .delete()
+           .eq('idconversacion', idconv)
+           .eq('idusuario', idusuario)
+      }
+    } catch (errChat) {
+      console.error('Error eliminando de chat:', errChat.message)
+    }
+
+    return { message: 'Inscripción eliminada exitosamente' }
+  }
 }
 
 export default InscripcionesEntrenamientosService
