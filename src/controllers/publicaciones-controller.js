@@ -36,11 +36,13 @@ class PublicacionesController {
 
   async putPublicacion(req, res) {
     try {
-      const { contenido } = req.body
+      const { contenido, quitarImagen } = req.body
       const publicacion = await publicacionesService.actualizarPublicacion(
         req.params.id,
         req.usuario.idusuario,
-        contenido
+        contenido,
+        req.file || null,
+        quitarImagen === 'true' || quitarImagen === true
       )
       res.status(StatusCodes.OK).json(publicacion)
     } catch (error) {

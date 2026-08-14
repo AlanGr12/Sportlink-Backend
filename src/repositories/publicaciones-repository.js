@@ -200,19 +200,31 @@ class PublicacionesRepository {
     return await this.#enriquecerPublicacion(data)
   }
 
-  async actualizarPublicacionAsync(id, contenido) {
+  /**
+   * @param {string|number} id
+   * @param {string} contenido
+   * @param {string|null} [imagenUrl]  — si se pasa, sobreescribe la imagen; si es undefined, no toca el campo
+   */
+  async actualizarPublicacionAsync(id, contenido, imagenUrl) {
+    const campos = {
+      contenido,
+      updatedat: new Date().toISOString()
+    }
+
+    // Solo sobreescribir imagen si se pasó explícitamente (null elimina, string actualiza)
+    if (imagenUrl !== undefined) {
+      campos.imagen = imagenUrl
+    }
+
     const { data, error } = await supabase
       .from('publicaciones')
-      .update({ 
-        contenido, 
-        updatedat: new Date().toISOString() 
-      })
+      .update(campos)
       .eq('idpublicacion', id)
       .select()
       .single()
 
     if (error) throw new Error(error.message)
-    
+
     return await this.#enriquecerPublicacion(data)
   }
 
@@ -226,13 +238,15 @@ class PublicacionesRepository {
   }
 
   async subirImagenPublicacionAsync(archivo) {
-    const nombreUnico = `publicaciones/${Date.now()}-${archivo.originalname.replace(/\\s+/g, '_')}`
+    // Limpia espacios del nombre original antes de armarlo (regex literal, no string)
+    const nombreLimpio = archivo.originalname.replace(/\s+/g, '_')
+    const nombreUnico = `publicaciones/${Date.now()}-${nombreLimpio}`
 
     const { error } = await supabase.storage
       .from('fotoPublicaciones')
       .upload(nombreUnico, archivo.buffer, { contentType: archivo.mimetype })
 
-    if (error) throw new Error(error.message)
+    if (error) throw new Error(`[fotoPublicaciones] Error al subir imagen: ${error.message}`)
 
     const { data } = supabase.storage
       .from('fotoPublicaciones')

@@ -22,7 +22,7 @@ router.use(verificarToken)
 router.get('/', publicacionesController.getPublicaciones)
 router.get('/:id', publicacionesController.getPublicacionById)
 router.post('/', upload.single('imagen'), publicacionesController.postPublicacion)
-router.put('/:id', publicacionesController.putPublicacion)
+router.put('/:id', upload.single('imagen'), publicacionesController.putPublicacion)
 router.delete('/:id', publicacionesController.deletePublicacion)
 
 export default router

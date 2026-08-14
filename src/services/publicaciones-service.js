@@ -94,7 +94,14 @@ class PublicacionesService {
     return await PublicacionesRepository.crearPublicacionAsync(nuevaPublicacion)
   }
 
-  async actualizarPublicacion(id, idusuario, contenido) {
+  /**
+   * @param {string|number} id
+   * @param {number} idusuario
+   * @param {string} contenido
+   * @param {object|null} [archivo]   - multer file object (si el usuario subio imagen nueva)
+   * @param {boolean} [quitarImagen] - si true, setea imagen = null (el usuario la borró explícitamente)
+   */
+  async actualizarPublicacion(id, idusuario, contenido, archivo = null, quitarImagen = false) {
     if (!contenido || contenido.trim() === '') {
       throw { status: 400, message: 'El contenido es obligatorio' }
     }
@@ -109,7 +116,17 @@ class PublicacionesService {
       throw { status: 403, message: 'No tienes permiso para editar esta publicación' }
     }
 
-    return await PublicacionesRepository.actualizarPublicacionAsync(id, contenido)
+    // Resolver imagen a actualizar
+    let imagenUrl = undefined // undefined = no tocar el campo
+    if (archivo) {
+      // Si viene archivo nuevo -> subir a Storage y usar su URL pública
+      imagenUrl = await PublicacionesRepository.subirImagenPublicacionAsync(archivo)
+    } else if (quitarImagen) {
+      // El usuario quiere eliminar la imagen explicitamente
+      imagenUrl = null
+    }
+
+    return await PublicacionesRepository.actualizarPublicacionAsync(id, contenido, imagenUrl)
   }
 
   async eliminarPublicacion(id, idusuario) {
