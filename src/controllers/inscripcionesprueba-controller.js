@@ -27,6 +27,17 @@ router.post('/', verificarToken, requiereRol('jugador'), async (req, res) => {
   }
 })
 
+// DELETE /api/inscripcionesprueba/:idprueba
+router.delete('/:idprueba', verificarToken, requiereRol('jugador'), async (req, res) => {
+  try {
+    const idprueba = req.params.idprueba
+    const result = await service.borrarInscripcion(idprueba, req.usuario.idusuario)
+    res.status(StatusCodes.OK).json(result)
+  } catch (error) {
+    res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
+  }
+})
+
 // GET /api/inscripcionesprueba/:id
 router.get('/:id', async (req, res) => {
   try {
