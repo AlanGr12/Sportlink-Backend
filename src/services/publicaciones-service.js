@@ -1,18 +1,19 @@
 import PublicacionesRepository from '../repositories/publicaciones-repository.js'
 
 class PublicacionesService {
-  async getPublicaciones(page = 1, limit = 20) {
-    page = parseInt(page) || 1
+
+  async getPublicaciones(page = 1, limit = 20, idusuario = null) {
+    page  = parseInt(page)  || 1
     limit = parseInt(limit) || 20
-    
-    if (page < 1) page = 1
+
+    if (page  < 1)           page  = 1
     if (limit < 1 || limit > 100) limit = 20
 
-    return await PublicacionesRepository.getAllAsync(page, limit)
+    return await PublicacionesRepository.getAllAsync(page, limit, idusuario)
   }
 
-  async getPublicacionById(id) {
-    const publicacion = await PublicacionesRepository.getByIdAsync(id)
+  async getPublicacionById(id, idusuario = null) {
+    const publicacion = await PublicacionesRepository.getByIdAsync(id, idusuario)
     if (!publicacion) {
       throw { status: 404, message: 'Publicación no encontrada' }
     }
@@ -46,7 +47,7 @@ class PublicacionesService {
     if (tipopublicacion === 'PRUEBA') {
       if (!idprueba) throw { status: 400, message: 'Se requiere idprueba para el tipo PRUEBA' }
       if (identrenamiento || idempleo) throw { status: 400, message: 'No se permiten referencias incompatibles para PRUEBA' }
-      
+
       const owner = await PublicacionesRepository.getPruebaOwnerAsync(idprueba)
       if (!owner) throw { status: 404, message: 'La prueba no existe' }
       if (Number(owner.clubes?.idusuario) !== Number(idusuario)) {
@@ -57,7 +58,7 @@ class PublicacionesService {
     if (tipopublicacion === 'ENTRENAMIENTO') {
       if (!identrenamiento) throw { status: 400, message: 'Se requiere identrenamiento para el tipo ENTRENAMIENTO' }
       if (idprueba || idempleo) throw { status: 400, message: 'No se permiten referencias incompatibles para ENTRENAMIENTO' }
-      
+
       const owner = await PublicacionesRepository.getEntrenamientoOwnerAsync(identrenamiento)
       if (!owner) throw { status: 404, message: 'El entrenamiento no existe' }
       if (Number(owner.entrenadores?.idusuario) !== Number(idusuario)) {
@@ -68,7 +69,7 @@ class PublicacionesService {
     if (tipopublicacion === 'EMPLEO') {
       if (!idempleo) throw { status: 400, message: 'Se requiere idempleo para el tipo EMPLEO' }
       if (idprueba || identrenamiento) throw { status: 400, message: 'No se permiten referencias incompatibles para EMPLEO' }
-      
+
       const owner = await PublicacionesRepository.getEmpleoOwnerAsync(idempleo)
       if (!owner) throw { status: 404, message: 'El empleo no existe' }
       if (Number(owner.clubes?.idusuario) !== Number(idusuario)) {
@@ -85,10 +86,10 @@ class PublicacionesService {
       idusuario,
       contenido,
       tipopublicacion,
-      idprueba: tipopublicacion === 'PRUEBA' ? Number(idprueba) : null,
-      identrenamiento: tipopublicacion === 'ENTRENAMIENTO' ? Number(identrenamiento) : null,
-      idempleo: tipopublicacion === 'EMPLEO' ? Number(idempleo) : null,
-      imagen: imagenUrl
+      idprueba:        tipopublicacion === 'PRUEBA'         ? Number(idprueba)        : null,
+      identrenamiento: tipopublicacion === 'ENTRENAMIENTO'  ? Number(identrenamiento) : null,
+      idempleo:        tipopublicacion === 'EMPLEO'         ? Number(idempleo)        : null,
+      imagen:          imagenUrl
     }
 
     return await PublicacionesRepository.crearPublicacionAsync(nuevaPublicacion)
@@ -98,43 +99,35 @@ class PublicacionesService {
    * @param {string|number} id
    * @param {number} idusuario
    * @param {string} contenido
-   * @param {object|null} [archivo]   - multer file object (si el usuario subio imagen nueva)
-   * @param {boolean} [quitarImagen] - si true, setea imagen = null (el usuario la borró explícitamente)
+   * @param {object|null} archivo      - multer file (imagen nueva)
+   * @param {boolean} quitarImagen     - true → setear imagen = null
    */
   async actualizarPublicacion(id, idusuario, contenido, archivo = null, quitarImagen = false) {
     if (!contenido || contenido.trim() === '') {
       throw { status: 400, message: 'El contenido es obligatorio' }
     }
 
-    // Verificar si la publicación existe y le pertenece al usuario
     const pub = await PublicacionesRepository.getRawByIdAsync(id)
-    if (!pub) {
-      throw { status: 404, message: 'Publicación no encontrada' }
-    }
+    if (!pub) throw { status: 404, message: 'Publicación no encontrada' }
 
     if (Number(pub.idusuario) !== Number(idusuario)) {
       throw { status: 403, message: 'No tienes permiso para editar esta publicación' }
     }
 
-    // Resolver imagen a actualizar
-    let imagenUrl = undefined // undefined = no tocar el campo
+    // Resolver imagen: undefined = no tocar; null = borrar; string = actualizar
+    let imagenUrl = undefined
     if (archivo) {
-      // Si viene archivo nuevo -> subir a Storage y usar su URL pública
       imagenUrl = await PublicacionesRepository.subirImagenPublicacionAsync(archivo)
     } else if (quitarImagen) {
-      // El usuario quiere eliminar la imagen explicitamente
       imagenUrl = null
     }
 
-    return await PublicacionesRepository.actualizarPublicacionAsync(id, contenido, imagenUrl)
+    return await PublicacionesRepository.actualizarPublicacionAsync(id, contenido, imagenUrl, idusuario)
   }
 
   async eliminarPublicacion(id, idusuario) {
-    // Verificar si la publicación existe y le pertenece al usuario
     const pub = await PublicacionesRepository.getRawByIdAsync(id)
-    if (!pub) {
-      throw { status: 404, message: 'Publicación no encontrada' }
-    }
+    if (!pub) throw { status: 404, message: 'Publicación no encontrada' }
 
     if (Number(pub.idusuario) !== Number(idusuario)) {
       throw { status: 403, message: 'No tienes permiso para eliminar esta publicación' }

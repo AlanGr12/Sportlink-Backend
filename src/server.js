@@ -16,6 +16,7 @@ import InscripcionesEmpleoController from './controllers/inscripcionesempleo-con
 import EntrevistasController from './controllers/entrevistas-controller.js'
 import chatRoutes from './routes/chat-routes.js'
 import publicacionesRoutes from './routes/publicaciones-routes.js'
+import comentariosRoutes from './routes/comentarios-routes.js'
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -40,6 +41,7 @@ app.use('/api/inscripcionesempleo', InscripcionesEmpleoController)
 app.use('/api/entrevistas', EntrevistasController)
 app.use('/api/conversaciones', chatRoutes)
 app.use('/api/publicaciones', publicacionesRoutes)
+app.use('/api/comentarios', comentariosRoutes)
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`)
 })

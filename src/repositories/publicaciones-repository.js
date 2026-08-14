@@ -1,54 +1,15 @@
 import supabase from '../configs/supabase-config.js'
+import { resolverAutor } from '../utils/resolver-autor.js'
+import LikesRepository from './likes-publicacion-repository.js'
+import ComentariosRepository from './comentarios-publicacion-repository.js'
 
 class PublicacionesRepository {
-  /**
-   * Resuelve el autor de una publicación obteniendo su nombre y fotoperfil
-   * basándose en su tipousuario.
-   */
-  async #resolverAutor(idusuario) {
-    // Primero obtener el tipousuario de la tabla usuarios
-    const { data: usuario, error: errUsuario } = await supabase
-      .from('usuarios')
-      .select('tipousuario')
-      .eq('idusuario', idusuario)
-      .single()
 
-    if (errUsuario || !usuario) {
-      return { idusuario, nombre: 'Usuario', fotoperfil: null, tipousuario: 'jugador' }
-    }
-
-    const tipousuario = usuario.tipousuario
-    let tabla = ''
-    if (tipousuario === 'jugador') tabla = 'jugadores'
-    else if (tipousuario === 'entrenador') tabla = 'entrenadores'
-    else if (tipousuario === 'club') tabla = 'clubes'
-
-    let nombre = 'Usuario'
-    let fotoperfil = null
-
-    if (tabla) {
-      const { data: perfilData } = await supabase
-        .from(tabla)
-        .select('nombre, fotoperfil')
-        .eq('idusuario', idusuario)
-        .single()
-        
-      if (perfilData) {
-        if (perfilData.nombre) nombre = perfilData.nombre
-        fotoperfil = perfilData.fotoperfil
-      }
-    }
-
-    return {
-      idusuario,
-      tipousuario,
-      nombre,
-      fotoperfil
-    }
-  }
+  // ── Helpers privados ─────────────────────────────────────────────────────
 
   /**
-   * Resuelve la entidad referenciada (Prueba, Entrenamiento, Empleo) para publicaciones no normales
+   * Resuelve la entidad referenciada (Prueba, Entrenamiento, Empleo)
+   * para publicaciones que no son de tipo NORMAL.
    */
   async #resolverReferencia(pub) {
     if (pub.tipopublicacion === 'NORMAL') return null
@@ -84,23 +45,64 @@ class PublicacionesRepository {
   }
 
   /**
-   * Enriquece una publicación cruda de la BD con su autor y referencia.
+   * Enriquece una publicación cruda con autor, referencia, likes y comentarios.
+   *
+   * @param {object} pub       - fila cruda de la tabla publicaciones
+   * @param {object|null} meta - datos precomputados de likes/comentarios:
+   *   { likesCount: Record<id,number>, likedByUser: Set<number>, comentariosCount: Record<id,number> }
+   *   Si es null, los campos de likes/comentarios quedan en 0/false (e.g. publicación recién creada).
    */
-  async #enriquecerPublicacion(pub) {
-    const autor = await this.#resolverAutor(pub.idusuario)
-    const referencia = await this.#resolverReferencia(pub)
+  async #enriquecerPublicacion(pub, meta = null) {
+    // autor y referencia en paralelo
+    const [autor, referencia] = await Promise.all([
+      resolverAutor(pub.idusuario),
+      this.#resolverReferencia(pub)
+    ])
+
+    const totalLikes       = meta?.likesCount?.[pub.idpublicacion]       ?? 0
+    const totalComentarios = meta?.comentariosCount?.[pub.idpublicacion] ?? 0
+    const usuarioDioLike   = meta?.likedByUser?.has(pub.idpublicacion)   ?? false
 
     return {
-      idpublicacion: pub.idpublicacion,
+      idpublicacion:    pub.idpublicacion,
       autor,
-      contenido: pub.contenido,
-      tipopublicacion: pub.tipopublicacion,
-      imagen: pub.imagen,
-      createdat: pub.createdat,
-      updatedat: pub.updatedat,
-      referencia
+      contenido:        pub.contenido,
+      tipopublicacion:  pub.tipopublicacion,
+      imagen:           pub.imagen,
+      createdat:        pub.createdat,
+      updatedat:        pub.updatedat,
+      referencia,
+      totalLikes,
+      totalComentarios,
+      usuarioDioLike
     }
   }
+
+  /**
+   * Batch: 3 queries planas para obtener likes + comentarios de N publicaciones.
+   * Evita el problema N+1 en el feed.
+   *
+   * @param {number[]} ids
+   * @param {number|null} idusuario
+   */
+  async #fetchMeta(ids, idusuario = null) {
+    if (!ids || ids.length === 0) {
+      return { likesCount: {}, likedByUser: new Set(), comentariosCount: {} }
+    }
+
+    const [likesData, comentariosCount] = await Promise.all([
+      LikesRepository.getBatchAsync(ids, idusuario),
+      ComentariosRepository.getComentariosBatchAsync(ids)
+    ])
+
+    return {
+      likesCount:       likesData.likesCount,
+      likedByUser:      likesData.likedByUser,
+      comentariosCount
+    }
+  }
+
+  // ── Owner checks (para validación en services) ────────────────────────────
 
   async getPruebaOwnerAsync(idprueba) {
     const { data } = await supabase
@@ -129,9 +131,18 @@ class PublicacionesRepository {
     return data
   }
 
-  async getAllAsync(page = 1, limit = 20) {
+  // ── Queries públicas ──────────────────────────────────────────────────────
+
+  /**
+   * Lista paginada de publicaciones enriquecidas con likes/comentarios.
+   *
+   * @param {number} page
+   * @param {number} limit
+   * @param {number|null} idusuario - del JWT, para calcular usuarioDioLike
+   */
+  async getAllAsync(page = 1, limit = 20, idusuario = null) {
     const from = (page - 1) * limit
-    const to = from + limit - 1
+    const to   = from + limit - 1
 
     const { data, count, error } = await supabase
       .from('publicaciones')
@@ -141,32 +152,44 @@ class PublicacionesRepository {
 
     if (error) throw new Error(error.message)
 
-    // Resolver N+1 para autores y referencias
+    const ids  = (data || []).map(p => p.idpublicacion)
+    const meta = await this.#fetchMeta(ids, idusuario)
+
     const publicacionesEnriquecidas = await Promise.all(
-      (data || []).map(pub => this.#enriquecerPublicacion(pub))
+      (data || []).map(pub => this.#enriquecerPublicacion(pub, meta))
     )
 
     return {
       publicaciones: publicacionesEnriquecidas,
       page,
       totalPaginas: count ? Math.ceil(count / limit) : 0,
-      totalItems: count || 0
+      totalItems:   count || 0
     }
   }
 
-  async getByIdAsync(id) {
+  /**
+   * Publicación individual enriquecida.
+   *
+   * @param {number|string} id
+   * @param {number|null} idusuario - del JWT, para calcular usuarioDioLike
+   */
+  async getByIdAsync(id, idusuario = null) {
     const { data, error } = await supabase
       .from('publicaciones')
       .select('*')
       .eq('idpublicacion', id)
       .single()
 
-    if (error && error.code === 'PGRST116') return null // No encontrado
+    if (error && error.code === 'PGRST116') return null
     if (error) throw new Error(error.message)
 
-    return await this.#enriquecerPublicacion(data)
+    const meta = await this.#fetchMeta([data.idpublicacion], idusuario)
+    return await this.#enriquecerPublicacion(data, meta)
   }
 
+  /**
+   * Fila cruda (sin enriquecer) — para ownership checks internos.
+   */
   async getRawByIdAsync(id) {
     const { data, error } = await supabase
       .from('publicaciones')
@@ -180,38 +203,48 @@ class PublicacionesRepository {
     return data
   }
 
+  /**
+   * Crea una publicación y retorna el objeto enriquecido.
+   * La publicación recién creada siempre tiene 0 likes/comentarios.
+   */
   async crearPublicacionAsync(publicacionData) {
     const { data, error } = await supabase
       .from('publicaciones')
       .insert({
-        idusuario: publicacionData.idusuario,
-        contenido: publicacionData.contenido,
+        idusuario:       publicacionData.idusuario,
+        contenido:       publicacionData.contenido,
         tipopublicacion: publicacionData.tipopublicacion || 'NORMAL',
-        idprueba: publicacionData.idprueba || null,
+        idprueba:        publicacionData.idprueba        || null,
         identrenamiento: publicacionData.identrenamiento || null,
-        idempleo: publicacionData.idempleo || null,
-        imagen: publicacionData.imagen || null
+        idempleo:        publicacionData.idempleo        || null,
+        imagen:          publicacionData.imagen          || null
       })
       .select()
       .single()
 
     if (error) throw new Error(error.message)
-    
-    return await this.#enriquecerPublicacion(data)
+
+    // meta = null → totalLikes: 0, totalComentarios: 0, usuarioDioLike: false
+    return await this.#enriquecerPublicacion(data, null)
   }
 
   /**
+   * Actualiza una publicación y retorna el objeto enriquecido con likes/comentarios actuales.
+   *
    * @param {string|number} id
    * @param {string} contenido
-   * @param {string|null} [imagenUrl]  — si se pasa, sobreescribe la imagen; si es undefined, no toca el campo
+   * @param {string|null|undefined} imagenUrl
+   *   - undefined: no tocar el campo imagen
+   *   - null: borrar la imagen
+   *   - string: URL de la nueva imagen
+   * @param {number|null} idusuario - para calcular usuarioDioLike en el response
    */
-  async actualizarPublicacionAsync(id, contenido, imagenUrl) {
+  async actualizarPublicacionAsync(id, contenido, imagenUrl, idusuario = null) {
     const campos = {
       contenido,
       updatedat: new Date().toISOString()
     }
 
-    // Solo sobreescribir imagen si se pasó explícitamente (null elimina, string actualiza)
     if (imagenUrl !== undefined) {
       campos.imagen = imagenUrl
     }
@@ -225,7 +258,8 @@ class PublicacionesRepository {
 
     if (error) throw new Error(error.message)
 
-    return await this.#enriquecerPublicacion(data)
+    const meta = await this.#fetchMeta([data.idpublicacion], idusuario)
+    return await this.#enriquecerPublicacion(data, meta)
   }
 
   async eliminarPublicacionAsync(id) {
@@ -238,9 +272,9 @@ class PublicacionesRepository {
   }
 
   async subirImagenPublicacionAsync(archivo) {
-    // Limpia espacios del nombre original antes de armarlo (regex literal, no string)
+    // Limpia espacios del nombre original antes de armarlo (regex literal)
     const nombreLimpio = archivo.originalname.replace(/\s+/g, '_')
-    const nombreUnico = `publicaciones/${Date.now()}-${nombreLimpio}`
+    const nombreUnico  = `publicaciones/${Date.now()}-${nombreLimpio}`
 
     const { error } = await supabase.storage
       .from('fotoPublicaciones')

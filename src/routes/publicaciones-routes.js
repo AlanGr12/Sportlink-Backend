@@ -2,6 +2,8 @@ import { Router } from 'express'
 import multer from 'multer'
 import { verificarToken } from '../middlewares/auth-middleware.js'
 import publicacionesController from '../controllers/publicaciones-controller.js'
+import likesController from '../controllers/likes-publicacion-controller.js'
+import comentariosController from '../controllers/comentarios-publicacion-controller.js'
 
 const router = Router()
 
@@ -16,13 +18,22 @@ const upload = multer({
   }
 })
 
-// Todas las rutas de publicaciones requieren estar autenticadas
+// Todas las rutas de publicaciones requieren autenticación
 router.use(verificarToken)
 
-router.get('/', publicacionesController.getPublicaciones)
+// ── CRUD Publicaciones ────────────────────────────────────────────────────
+router.get('/',    publicacionesController.getPublicaciones)
 router.get('/:id', publicacionesController.getPublicacionById)
-router.post('/', upload.single('imagen'), publicacionesController.postPublicacion)
+router.post('/',   upload.single('imagen'), publicacionesController.postPublicacion)
 router.put('/:id', upload.single('imagen'), publicacionesController.putPublicacion)
 router.delete('/:id', publicacionesController.deletePublicacion)
+
+// ── Likes ─────────────────────────────────────────────────────────────────
+router.post('/:id/like',   likesController.postLike)
+router.delete('/:id/like', likesController.deleteLike)
+
+// ── Comentarios (subrutas de una publicación) ─────────────────────────────
+router.get('/:id/comentarios',  comentariosController.getComentarios)
+router.post('/:id/comentarios', comentariosController.postComentario)
 
 export default router
