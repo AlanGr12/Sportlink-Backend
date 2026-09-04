@@ -3,10 +3,20 @@ import publicacionesService from '../services/publicaciones-service.js'
 
 class PublicacionesController {
 
+  // Pública — sin autenticación. Usada para compartir el link de una publicación.
+  async getPublicacionPublica(req, res) {
+    try {
+      // idusuario null: no calcula "usuarioDioLike" para un visitante anónimo
+      const publicacion = await publicacionesService.getPublicacionById(req.params.id, null)
+      res.status(StatusCodes.OK).json(publicacion)
+    } catch (error) {
+      res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
+    }
+  }
+
   async getPublicaciones(req, res) {
     try {
       const { page, limit } = req.query
-      // req.usuario.idusuario viene del JWT via verificarToken (Fase 2)
       const result = await publicacionesService.getPublicaciones(
         page,
         limit,

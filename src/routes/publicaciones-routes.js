@@ -18,7 +18,10 @@ const upload = multer({
   }
 })
 
-// Todas las rutas de publicaciones requieren autenticación
+// ── Ruta pública (compartir) — SIN autenticación. Debe ir ANTES de router.use(verificarToken) ──
+router.get('/compartir/:id', publicacionesController.getPublicacionPublica)
+
+// Todas las rutas de abajo requieren autenticación
 router.use(verificarToken)
 
 // ── CRUD Publicaciones ────────────────────────────────────────────────────
