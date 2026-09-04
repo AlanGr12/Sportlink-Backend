@@ -83,7 +83,7 @@ class EntrenamientosRepository {
     return data.map(e => new Entrenamiento(this.#normalizarImagen(e)))
   }
 
-  async crearEntrenamiento(iddeporte, identrenador, precio, cantidad, titulo, imagen, ubicacion, fechaentr, estado, descripcion, genero, nivel) {
+  async crearEntrenamiento(iddeporte, identrenador, precio, cantidad, titulo, imagen, ubicacion, fechaentr, horainicio, horafin, estado, descripcion, genero, nivel) {
     const { data, error } = await supabase
       .from('entrenamientos')
       .insert({
@@ -95,6 +95,8 @@ class EntrenamientosRepository {
         imagen,
         ubicacion,
         fechaentr,
+        horainicio,
+        horafin,
         estado,
         descripcion,
         genero,
@@ -104,6 +106,36 @@ class EntrenamientosRepository {
       .single()
 
     if (error) throw new Error(error.message)
+
+    return new Entrenamiento(this.#normalizarImagen(data))
+  }
+
+  async editarEntrenamiento(id, updates) {
+    const permitidos = [
+      'iddeporte', 'identrenador', 'precio', 'cantidad', 'titulo', 'imagen',
+      'ubicacion', 'fechaentr', 'horainicio', 'horafin', 'estado', 'descripcion',
+      'genero', 'nivel'
+    ]
+    const dataToUpdate = {}
+    for (const p of permitidos) {
+      if (updates[p] !== undefined && updates[p] !== null) {
+        dataToUpdate[p] = updates[p]
+      }
+    }
+    
+    // Explicitly allow horainicio and horafin to be set to null if needed
+    if (updates.horainicio === null) dataToUpdate.horainicio = null
+    if (updates.horafin === null) dataToUpdate.horafin = null
+
+    const { data, error } = await supabase
+      .from('entrenamientos')
+      .update(dataToUpdate)
+      .eq('identrenamientos', id)
+      .select(`*, deportes ( iddeporte, deporte ), entrenadores ( identrenador, nombre )`)
+      .single()
+
+    if (error) throw new Error(error.message)
+    if (!data) return null
 
     return new Entrenamiento(this.#normalizarImagen(data))
   }

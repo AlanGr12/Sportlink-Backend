@@ -85,4 +85,18 @@ router.get('/:id', async (req, res) => {
   }
 })
 
+// PUT /api/entrenamientos/:id — Editar un entrenamiento
+router.put('/:id', verificarToken, requiereRol('entrenador'), upload.single('imagen'), async (req, res) => {
+  try {
+    const idEntrenamiento = Number(req.params.id)
+    if (isNaN(idEntrenamiento) || idEntrenamiento <= 0) {
+      return res.status(StatusCodes.BAD_REQUEST).json({ error: 'ID inválido' })
+    }
+    const ent = await service.editarEntrenamiento(idEntrenamiento, req.body, req.file, req.usuario.idusuario)
+    res.status(StatusCodes.OK).json(ent)
+  } catch (error) {
+    res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
+  }
+})
+
 export default router

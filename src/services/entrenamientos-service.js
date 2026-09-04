@@ -54,6 +54,8 @@ class EntrenamientosService {
       imagen,
       ubicacion,
       fechaentr,
+      horainicio,
+      horafin,
       estado,
       descripcion,
       genero,
@@ -95,6 +97,8 @@ class EntrenamientosService {
       imagenUrl,
       ubicacion,
       fechaentr,
+      horainicio,
+      horafin,
       estadoBool,
       descripcion,
       genero,
@@ -109,8 +113,8 @@ class EntrenamientosService {
           idusuario:       entrenador.idusuario,
           tipo:            'ENTRENAMIENTO',
           fecha:           fechaentr,
-          horainicio:      null,
-          horafin:         null,
+          horainicio:      horainicio || null,
+          horafin:         horafin || null,
           idprueba:        null,
           identrenamiento: entrenamiento.identrenamientos,
           idinscripcionempleo: null,
@@ -144,6 +148,50 @@ class EntrenamientosService {
     } catch (errChat) {
       console.error('[entrenamientos-service] Error creando grupo de chat para entrenamiento:', errChat.message)
     }
+
+    return entrenamiento
+  }
+
+  async editarEntrenamiento(id, data, archivo, idusuario) {
+    const {
+      iddeporte, identrenador, precio, cantidad, titulo, imagen,
+      ubicacion, fechaentr, horainicio, horafin, estado, descripcion,
+      genero, nivel
+    } = data || {}
+
+    let estadoBool = undefined
+    if (estado !== undefined) {
+      if (typeof estado !== 'boolean') {
+        const s = String(estado).toLowerCase()
+        if (s !== 'true' && s !== 'false') throw { status: 400, message: 'El estado debe ser true o false' }
+      }
+      estadoBool = typeof estado === 'boolean' ? estado : String(estado).toLowerCase() === 'true'
+    }
+
+    let imagenUrl = imagen
+    if (archivo) {
+      imagenUrl = await this.repository.subirImagenEntrenamientoAsync(archivo)
+    }
+
+    const updates = {
+      iddeporte: iddeporte ? Number(iddeporte) : undefined,
+      identrenador: identrenador ? Number(identrenador) : undefined,
+      precio: precio ? Number(precio) : undefined,
+      cantidad: cantidad ? Number(cantidad) : undefined,
+      titulo,
+      imagen: imagenUrl,
+      ubicacion,
+      fechaentr,
+      horainicio,
+      horafin,
+      estado: estadoBool,
+      descripcion,
+      genero,
+      nivel
+    }
+
+    const entrenamiento = await this.repository.editarEntrenamiento(id, updates)
+    if (!entrenamiento) throw { status: 404, message: `No se pudo editar el entrenamiento ${id}` }
 
     return entrenamiento
   }
