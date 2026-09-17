@@ -139,14 +139,21 @@ class PublicacionesRepository {
    * @param {number} page
    * @param {number} limit
    * @param {number|null} idusuario - del JWT, para calcular usuarioDioLike
+   * @param {number|null} targetUserId - opcional, para filtrar publicaciones por autor
    */
-  async getAllAsync(page = 1, limit = 20, idusuario = null) {
+  async getAllAsync(page = 1, limit = 20, idusuario = null, targetUserId = null) {
     const from = (page - 1) * limit
     const to   = from + limit - 1
 
-    const { data, count, error } = await supabase
+    let query = supabase
       .from('publicaciones')
       .select('*', { count: 'exact' })
+
+    if (targetUserId) {
+      query = query.eq('idusuario', targetUserId)
+    }
+
+    const { data, count, error } = await query
       .order('createdat', { ascending: false })
       .range(from, to)
 

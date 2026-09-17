@@ -2,14 +2,14 @@ import PublicacionesRepository from '../repositories/publicaciones-repository.js
 
 class PublicacionesService {
 
-  async getPublicaciones(page = 1, limit = 20, idusuario = null) {
+  async getPublicaciones(page = 1, limit = 20, idusuario = null, targetUserId = null) {
     page  = parseInt(page)  || 1
     limit = parseInt(limit) || 20
 
     if (page  < 1)           page  = 1
     if (limit < 1 || limit > 100) limit = 20
 
-    return await PublicacionesRepository.getAllAsync(page, limit, idusuario)
+    return await PublicacionesRepository.getAllAsync(page, limit, idusuario, targetUserId)
   }
 
   async getPublicacionById(id, idusuario = null) {

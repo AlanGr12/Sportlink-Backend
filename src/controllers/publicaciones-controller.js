@@ -16,11 +16,13 @@ class PublicacionesController {
 
   async getPublicaciones(req, res) {
     try {
-      const { page, limit } = req.query
+      const { page, limit, usuarioId, idusuario } = req.query
+      const targetUserId = usuarioId || idusuario || null
       const result = await publicacionesService.getPublicaciones(
         page,
         limit,
-        req.usuario.idusuario
+        req.usuario.idusuario,
+        targetUserId
       )
       res.status(StatusCodes.OK).json(result)
     } catch (error) {
