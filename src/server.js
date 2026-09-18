@@ -1,5 +1,11 @@
 import 'dotenv/config'
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
+
+// Solo desactiva la verificación de certificados SSL en desarrollo local.
+// En producción (Railway, etc.) esto queda deshabilitado por seguridad.
+if (process.env.NODE_ENV !== 'production') {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
+}
+
 import express from 'express'
 import cors from 'cors'
 import JugadoresController from './controllers/jugadores-controller.js'
