@@ -11,8 +11,9 @@ const openai = new OpenAI({
   baseURL: 'https://integrate.api.nvidia.com/v1',
 });
 
-const MODEL_NAME = 'nvidia/nemotron-3.5-lightning-30b-a3b';
-const api = axios.create({ baseURL: process.env.SPORTLINK_API_URL || 'http://localhost:3000/api' });
+const MODEL_NAME = 'z-ai/glm-5.3';
+const port = process.env.PORT || 3000;
+const api = axios.create({ baseURL: process.env.SPORTLINK_API_URL || `http://127.0.0.1:${port}/api` });
 
 const tools = [
   {
@@ -84,7 +85,9 @@ export async function procesarMensajeAgente(mensajeUsuario, historialPrevio = []
     messages,
     tools,
     tool_choice: 'auto',
-    temperature: 0.2,
+    temperature: 0.5,
+    top_p: 1,
+    max_tokens: 1024,
   });
 
   let message = response.choices[0].message;
@@ -93,9 +96,15 @@ export async function procesarMensajeAgente(mensajeUsuario, historialPrevio = []
     messages.push(message);
 
     for (const toolCall of message.tool_calls) {
-      const args = typeof toolCall.function.arguments === 'string' 
-        ? JSON.parse(toolCall.function.arguments) 
-        : toolCall.function.arguments;
+      let args = {};
+      try {
+        args = typeof toolCall.function.arguments === 'string' 
+          ? JSON.parse(toolCall.function.arguments) 
+          : (toolCall.function.arguments || {});
+      } catch (parseError) {
+        console.warn('Error al parsear argumentos de tool:', parseError.message);
+        args = {};
+      }
 
       const output = await executeTool(toolCall.function.name, args);
 
@@ -111,13 +120,15 @@ export async function procesarMensajeAgente(mensajeUsuario, historialPrevio = []
       messages,
       tools,
       tool_choice: 'auto',
-      temperature: 0.2,
+      temperature: 0.5,
+      top_p: 1,
+      max_tokens: 1024,
     });
     message = response.choices[0].message;
   }
 
   return {
-    texto: message.content,
+    texto: message.content || 'Disculpá, no pude generar una respuesta en este momento.',
     historial: messages.filter(m => m.role !== 'system'),
   };
 }
