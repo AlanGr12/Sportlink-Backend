@@ -24,6 +24,7 @@ import chatRoutes from './routes/chat-routes.js'
 import publicacionesRoutes from './routes/publicaciones-routes.js'
 import comentariosRoutes from './routes/comentarios-routes.js'
 import iaRoutes from './routes/ia.routes.js'
+import reseniaRoutes from './routes/resenia.routes.js'
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -50,6 +51,7 @@ app.use('/api/conversaciones', chatRoutes)
 app.use('/api/publicaciones', publicacionesRoutes)
 app.use('/api/comentarios', comentariosRoutes)
 app.use('/api/ia', iaRoutes)
+app.use('/api/resenias', reseniaRoutes)
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`)
 })
