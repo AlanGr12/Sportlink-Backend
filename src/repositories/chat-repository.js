@@ -1,5 +1,22 @@
 import supabase from '../configs/supabase-config.js'
 
+/**
+ * Normaliza un timestamp de PostgreSQL / Supabase para garantizar que se devuelva
+ * en formato ISO 8601 estandarizado en UTC (con indicador 'Z').
+ */
+function normalizarAUtcIso(fecha) {
+  if (!fecha) return null
+  if (fecha instanceof Date) return fecha.toISOString()
+
+  let str = String(fecha).trim()
+  // Si la cadena no trae indicador de zona horaria (sin 'Z' ni '+/-'), asumimos UTC puro
+  if (!str.endsWith('Z') && !str.includes('+')) {
+    str = `${str.replace(' ', 'T')}Z`
+  }
+  const date = new Date(str)
+  return isNaN(date.getTime()) ? fecha : date.toISOString()
+}
+
 class ChatRepository {
   /**
    * Verifica si un usuario es participante de una conversación
@@ -127,6 +144,12 @@ class ChatRepository {
         // Ordenamos mensajes por fecha descending manualmente por si acaso, y agarramos el 0
         const sortedMensajes = conv.mensajes.sort((a,b) => new Date(b.createdat) - new Date(a.createdat))
         ultimoMensaje = sortedMensajes[0]
+        if (ultimoMensaje) {
+          ultimoMensaje = {
+            ...ultimoMensaje,
+            createdat: normalizarAUtcIso(ultimoMensaje.createdat)
+          }
+        }
       }
 
       // Estructura de respuesta adaptada
@@ -135,7 +158,7 @@ class ChatRepository {
         tipo: conv.tipo,
         nombre: conv.nombre,
         foto: conv.foto,
-        updatedat: conv.updatedat,
+        updatedat: normalizarAUtcIso(conv.updatedat),
         ultimoMensaje
       }
 
@@ -275,7 +298,12 @@ class ChatRepository {
           leido = msg.mensajes_leidos.some(ml => Number(ml.idusuario) === Number(idusuarioLogueado))
         }
       }
-      return { ...msg, leido, mensajes_leidos: undefined }
+      return {
+        ...msg,
+        createdat: normalizarAUtcIso(msg.createdat),
+        leido,
+        mensajes_leidos: undefined
+      }
     })
     
     // Luego los devolvemos en orden cronológico (los más viejos arriba en el chat)
@@ -286,6 +314,7 @@ class ChatRepository {
    * Inserta un nuevo mensaje
    */
   async insertarMensaje(idconversacion, idusuarioemisor, contenido, tipomensaje = 'TEXTO') {
+    const ahoraUtc = new Date().toISOString()
     const { data, error } = await supabase
       .from('mensajes')
       .insert({
@@ -293,13 +322,16 @@ class ChatRepository {
         idusuarioemisor,
         contenido,
         tipomensaje,
-        createdat: new Date().toISOString()
+        createdat: ahoraUtc
       })
       .select()
       .single()
 
     if (error) throw new Error(error.message)
-    return data
+    return {
+      ...data,
+      createdat: normalizarAUtcIso(data?.createdat || ahoraUtc)
+    }
   }
 
   /**
@@ -315,7 +347,10 @@ class ChatRepository {
       .single()
 
     if (error) throw new Error(error.message)
-    return data
+    return {
+      ...data,
+      createdat: normalizarAUtcIso(data?.createdat)
+    }
   }
 
   /**
@@ -331,7 +366,10 @@ class ChatRepository {
       .single()
 
     if (error) throw new Error(error.message)
-    return data
+    return {
+      ...data,
+      createdat: normalizarAUtcIso(data?.createdat)
+    }
   }
 
   /**
