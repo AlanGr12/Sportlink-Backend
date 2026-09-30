@@ -6,12 +6,13 @@ class ReseniaController {
   /**
    * POST /api/resenias
    * Crea una nueva reseña para un club o entrenador.
-   * Valida body requerido: estrellitas (1-5), textoopinion no vacío y destinatario válido.
+   * Admite autores Jugadores o Entrenadores (cuando califican a un Club).
    */
   async crearResenia(req, res) {
     try {
       const {
         idjugador: idjugadorBody,
+        identrenador_autor: identrenadorAutorBody,
         idclub,
         identrenador,
         tipo,
@@ -19,39 +20,36 @@ class ReseniaController {
         idprueba,
         identrenamiento,
         estrellitas,
-        textoopinion
+        textoopinion,
+        rolAutor: rolAutorBody
       } = req.body || {}
 
-      // 1. Resolver idjugador: desde la sesión autenticada o desde el body
       let idjugador = idjugadorBody ? Number(idjugadorBody) : null
+      let identrenador_autor = identrenadorAutorBody ? Number(identrenadorAutorBody) : null
+      let tipousuario = rolAutorBody || (req.usuario ? req.usuario.tipousuario : null)
 
+      // Resolver autor desde la sesión autenticada si está disponible
       if (req.usuario) {
-        if (req.usuario.tipousuario && req.usuario.tipousuario.toLowerCase() !== 'jugador' && !idjugador) {
-          return res.status(StatusCodes.FORBIDDEN).json({
-            error: 'Acceso denegado',
-            detail: 'Solo los usuarios con rol de jugador pueden calificar clubes o entrenadores.'
-          })
-        }
+        const rol = (req.usuario.tipousuario || '').toLowerCase()
+        tipousuario = rol
 
-        const idJugadorSesion = await reseniaService.obtenerIdJugadorPorUsuario(req.usuario.idusuario)
-        if (!idJugadorSesion && !idjugador) {
-          return res.status(StatusCodes.NOT_FOUND).json({
-            error: 'Perfil no encontrado',
-            detail: 'No se encontró el perfil de jugador correspondiente al usuario autenticado.'
-          })
+        if (rol === 'entrenador') {
+          const idEntrenadorSesion = await reseniaService.obtenerIdEntrenadorPorUsuario(req.usuario.idusuario)
+          identrenador_autor = idEntrenadorSesion || identrenador_autor
+        } else if (rol === 'jugador') {
+          const idJugadorSesion = await reseniaService.obtenerIdJugadorPorUsuario(req.usuario.idusuario)
+          idjugador = idJugadorSesion || idjugador
         }
-
-        idjugador = idJugadorSesion || idjugador
       }
 
-      if (!idjugador || isNaN(idjugador) || idjugador <= 0) {
+      if (!idjugador && !identrenador_autor) {
         return res.status(StatusCodes.BAD_REQUEST).json({
           error: 'Datos requeridos faltantes',
-          detail: 'El idjugador es obligatorio o debe contar con una sesión activa de jugador.'
+          detail: 'Debe especificarse idjugador o identrenador_autor, o contar con una sesión activa.'
         })
       }
 
-      // 2. Resolver destinatario (acepta idclub/identrenador o formato { tipo, id })
+      // Resolver destinatario (acepta idclub/identrenador o formato { tipo, id })
       let clubDestino = idclub
       let entrenadorDestino = identrenador
 
@@ -61,7 +59,7 @@ class ReseniaController {
         else if (tipoNorm === 'entrenador') entrenadorDestino = id
       }
 
-      // 3. Validar estrellitas requeridas
+      // Validar estrellitas requeridas
       const estrellasNum = Number(estrellitas)
       if (
         estrellitas === undefined ||
@@ -76,7 +74,7 @@ class ReseniaController {
         })
       }
 
-      // 4. Validar texto de opinión
+      // Validar texto de opinión
       if (!textoopinion || typeof textoopinion !== 'string' || textoopinion.trim() === '') {
         return res.status(StatusCodes.BAD_REQUEST).json({
           error: 'Opinión inválida',
@@ -84,9 +82,12 @@ class ReseniaController {
         })
       }
 
-      // 5. Llamar al servicio para procesar la creación y validaciones de negocio
+      // Llamar al servicio para procesar la creación y validaciones de negocio
       const nuevaResenia = await reseniaService.crearResenia({
         idjugador,
+        identrenador_autor,
+        idusuario: req.usuario?.idusuario,
+        tipousuario,
         idclub: clubDestino,
         identrenador: entrenadorDestino,
         idprueba,
@@ -108,7 +109,6 @@ class ReseniaController {
   /**
    * GET /api/resenias/:tipo/:id
    * Lista las reseñas y métricas del club o entrenador.
-   * Recibe tipo ('club' | 'entrenador') e id por params o query.
    */
   async obtenerResenias(req, res) {
     try {
@@ -153,7 +153,7 @@ class ReseniaController {
 
   /**
    * GET /api/resenias/verificar/:tipo/:id
-   * Valida si el usuario en sesión (jugador) está en condiciones de calificar al club o entrenador.
+   * Valida si el usuario en sesión (jugador o entrenador) está en condiciones de calificar al club o entrenador.
    */
   async verificarHabilitacion(req, res) {
     try {
@@ -175,37 +175,34 @@ class ReseniaController {
         })
       }
 
-      // Resolver idjugador a partir de req.usuario (sesión) o query de respaldo
       let idjugador = null
+      let identrenador_autor = null
+      let idusuario = null
+      let tipousuario = (req.query.tipousuario || '').toLowerCase()
 
       if (req.usuario) {
-        if (req.usuario.tipousuario && req.usuario.tipousuario.toLowerCase() !== 'jugador') {
-          return res.status(StatusCodes.OK).json({
-            puedeCalificar: false,
-            yaCalifico: false,
-            eventosPasados: [],
-            motivo: 'Solo los usuarios con rol de jugador pueden calificar a clubes o entrenadores.'
-          })
-        }
+        idusuario = req.usuario.idusuario
+        tipousuario = (req.usuario.tipousuario || '').toLowerCase()
 
-        idjugador = await reseniaService.obtenerIdJugadorPorUsuario(req.usuario.idusuario)
-        if (!idjugador) {
-          return res.status(StatusCodes.NOT_FOUND).json({
-            error: 'Jugador no encontrado',
-            detail: 'No se encontró un perfil de jugador asociado al usuario en sesión.'
-          })
+        if (tipousuario === 'entrenador') {
+          identrenador_autor = await reseniaService.obtenerIdEntrenadorPorUsuario(idusuario)
+        } else if (tipousuario === 'jugador') {
+          idjugador = await reseniaService.obtenerIdJugadorPorUsuario(idusuario)
         }
-      } else if (req.query.idjugador) {
-        idjugador = Number(req.query.idjugador)
-      } else {
-        return res.status(StatusCodes.UNAUTHORIZED).json({
-          error: 'No autenticado',
-          detail: 'Se requiere iniciar sesión como jugador para verificar la habilitación de reseña.'
-        })
       }
+
+      if (!idjugador && req.query.idjugador) idjugador = Number(req.query.idjugador)
+      if (!identrenador_autor && (req.query.identrenador || req.query.identrenador_autor)) {
+        identrenador_autor = Number(req.query.identrenador || req.query.identrenador_autor)
+      }
+      if (!idusuario && req.query.idusuario) idusuario = Number(req.query.idusuario)
+      if (!tipousuario && req.query.tipousuario) tipousuario = (req.query.tipousuario || '').toLowerCase()
 
       const resultado = await reseniaService.verificarPuedeCalificar({
         idjugador,
+        identrenador_autor,
+        idusuario,
+        tipousuario,
         tipo,
         id
       })

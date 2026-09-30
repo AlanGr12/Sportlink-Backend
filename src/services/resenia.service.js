@@ -39,35 +39,81 @@ class ReseniaService {
   }
 
   /**
-   * Crea una reseña en la base de datos tras validar los campos de negocio,
-   * la participación previa y que no exista una reseña anterior.
+   * Crea una reseña en la base de datos tras validar los campos de negocio
+   * y que no exista una reseña anterior.
    *
    * @param {Object} params
-   * @param {number} params.idjugador
+   * @param {number|null} [params.idjugador]
+   * @param {number|null} [params.identrenador_autor]
+   * @param {number|null} [params.idusuario]
+   * @param {string|null} [params.tipousuario]
    * @param {number|null} [params.idclub]
    * @param {number|null} [params.identrenador]
    * @param {number|null} [params.idprueba]
    * @param {number|null} [params.identrenamiento]
    * @param {number} params.estrellitas - Entero del 1 al 5
    * @param {string} params.textoopinion - Opinión no vacía
+   * @param {string|null} [params.rolAutor]
    */
   async crearResenia({
     idjugador,
+    identrenador_autor,
+    idusuario,
+    tipousuario,
     idclub,
     identrenador,
     idprueba = null,
     identrenamiento = null,
     estrellitas,
-    textoopinion
+    textoopinion,
+    rolAutor
   }) {
-    // 1. Validar jugador
-    const jugadorId = Number(idjugador)
-    if (!idjugador || isNaN(jugadorId) || jugadorId <= 0) {
-      throw { status: 400, message: 'El id del jugador es obligatorio y debe ser un número válido.' }
+    // 1. Resolver autor (jugador o entrenador)
+    const rol = (rolAutor || tipousuario || '').toLowerCase().trim()
+    let jugadorId = idjugador ? Number(idjugador) : null
+    let entrenadorAutorId = identrenador_autor ? Number(identrenador_autor) : null
+
+    if (idusuario && !jugadorId && !entrenadorAutorId) {
+      if (rol === 'entrenador') {
+        const ent = await this.repository.getEntrenadorByUsuarioIdAsync(idusuario)
+        entrenadorAutorId = ent ? ent.identrenador : null
+      } else {
+        const jug = await this.repository.getJugadorByUsuarioIdAsync(idusuario)
+        jugadorId = jug ? jug.idjugador : null
+      }
     }
 
-    // 2. Validar constraint de exclusión: solo idclub O identrenador
+    // Si el usuario es entrenador, mapear su ID a identrenador_autor. Si es jugador, mapearlo a idjugador.
+    if (rol === 'entrenador' && !entrenadorAutorId && jugadorId) {
+      entrenadorAutorId = jugadorId
+      jugadorId = null
+    }
+
+    if (!jugadorId && !entrenadorAutorId) {
+      throw {
+        status: 400,
+        message: 'Debe especificarse un autor válido (idjugador o identrenador_autor).'
+      }
+    }
+
+    // 2. Validar constraint de exclusión: solo idclub O identrenador destinatario
     const { idclub: clubId, identrenador: entrenadorId, tipo, destinatarioId } = this.#validarDestinatario(idclub, identrenador)
+
+    // Un entrenador solo puede calificar a un club, no a otro entrenador
+    if (entrenadorAutorId && tipo === 'entrenador') {
+      throw {
+        status: 403,
+        message: 'Un entrenador no puede calificar a otro entrenador.'
+      }
+    }
+
+    // Validar auto-reseña
+    if (tipo === 'entrenador' && entrenadorAutorId && Number(entrenadorAutorId) === Number(destinatarioId)) {
+      throw {
+        status: 400,
+        message: 'No puedes calificarte a ti mismo.'
+      }
+    }
 
     // 3. Validar estrellitas (entero entre 1 y 5)
     const numEstrellas = Number(estrellitas)
@@ -86,28 +132,22 @@ class ReseniaService {
       throw { status: 400, message: 'El texto de opinión es obligatorio y no puede estar vacío.' }
     }
 
-    // 5. Validar si el jugador está habilitado para calificar (participó en evento finalizado y no calificó previamente)
-    const habilitacion = await this.verificarPuedeCalificar({
+    // 5. Validar que no haya calificado previamente (capturando el 409 Conflict)
+    const yaExiste = await this.repository.verificarExisteReseniaAsync({
       idjugador: jugadorId,
+      identrenador_autor: entrenadorAutorId,
       tipo,
       id: destinatarioId
     })
 
-    if (habilitacion.yaCalifico) {
+    if (yaExiste) {
       throw {
         status: 409,
         message: `Ya has calificado a este ${tipo}. No se permite enviar más de una reseña.`
       }
     }
 
-    if (!habilitacion.puedeCalificar) {
-      throw {
-        status: 403,
-        message: `No estás habilitado para calificar a este ${tipo}. Debes haber completado al menos ${tipo === 'club' ? 'una prueba' : 'un entrenamiento'} finalizado.`
-      }
-    }
-
-    // 6. Validar IDs de prueba o entrenamiento si fueron provistos
+    // 6. Validar IDs de prueba o entrenamiento (opcionales, explícitamente null si no aplican)
     const pruebaId = idprueba ? Number(idprueba) : null
     const entrenamientoId = identrenamiento ? Number(identrenamiento) : null
 
@@ -115,6 +155,7 @@ class ReseniaService {
     try {
       const nuevaResenia = await this.repository.crearReseniaAsync({
         idjugador: jugadorId,
+        identrenador_autor: entrenadorAutorId,
         idclub: clubId,
         identrenador: entrenadorId,
         idprueba: pruebaId,
@@ -129,7 +170,7 @@ class ReseniaService {
       if (error.code === '23505' || error.status === 409) {
         throw {
           status: 409,
-          message: `Ya existe una reseña de este jugador para este ${tipo}.`
+          message: `Ya existe una reseña previa para este ${tipo}.`
         }
       }
       throw error
@@ -138,10 +179,6 @@ class ReseniaService {
 
   /**
    * Obtiene las reseñas por destinatario (club o entrenador) ordenadas por fecha descendente.
-   *
-   * @param {Object} params
-   * @param {'club'|'entrenador'} params.tipo
-   * @param {number} params.id
    */
   async obtenerReseniasPorDestinatario({ tipo, id }) {
     const tipoNormalizado = (tipo || '').toLowerCase().trim()
@@ -162,10 +199,6 @@ class ReseniaService {
 
   /**
    * Obtiene el promedio de estrellitas (1 decimal) y total de reseñas para un club o entrenador.
-   *
-   * @param {Object} params
-   * @param {'club'|'entrenador'} params.tipo
-   * @param {number} params.id
    */
   async obtenerPromedioYEstadisticas({ tipo, id }) {
     const tipoNormalizado = (tipo || '').toLowerCase().trim()
@@ -185,23 +218,20 @@ class ReseniaService {
   }
 
   /**
-   * Valida si un jugador puede calificar a un club o entrenador:
-   * - Si tipo === 'club': verifica si participó en alguna prueba finalizada (fechaprueba < NOW()).
-   * - Si tipo === 'entrenador': verifica si participó en un entrenamiento finalizado (fechaentr < NOW()).
-   * - Verifica si el jugador ya dejó una reseña previa para esa entidad.
-   *
-   * @param {Object} params
-   * @param {number} params.idjugador
-   * @param {'club'|'entrenador'} params.tipo
-   * @param {number} params.id
-   * @returns {Promise<{ puedeCalificar: boolean, yaCalifico: boolean, eventosPasados: Array }>}
+   * Valida si un usuario (jugador o entrenador) puede calificar a un club o entrenador:
+   * - Si tipo === 'club': lo pueden calificar jugadores o entrenadores.
+   * - Si tipo === 'entrenador': lo pueden calificar jugadores.
+   * - No se exige asistencia a eventos previos (puedeCalificar: true si no calificó antes y no es el dueño del perfil).
+   * - Si participó en eventos pasados, se envían en eventosPasados de forma opcional.
    */
-  async verificarPuedeCalificar({ idjugador, tipo, id }) {
-    const jugadorId = Number(idjugador)
-    if (!idjugador || isNaN(jugadorId) || jugadorId <= 0) {
-      throw { status: 400, message: 'El idjugador es obligatorio y debe ser un número válido.' }
-    }
-
+  async verificarPuedeCalificar({
+    idjugador,
+    identrenador_autor,
+    idusuario,
+    tipousuario,
+    tipo,
+    id
+  }) {
     const tipoNormalizado = (tipo || '').toLowerCase().trim()
     if (tipoNormalizado !== 'club' && tipoNormalizado !== 'entrenador') {
       throw { status: 400, message: 'El tipo debe ser "club" o "entrenador".' }
@@ -212,34 +242,88 @@ class ReseniaService {
       throw { status: 400, message: 'El ID de la entidad es obligatorio y debe ser un número válido.' }
     }
 
-    // 1. Verificar si ya calificó previamente
+    // Resolver autor (jugador o entrenador)
+    let jugadorId = idjugador ? Number(idjugador) : null
+    let entrenadorAutorId = identrenador_autor ? Number(identrenador_autor) : null
+    const rol = (tipousuario || '').toLowerCase().trim()
+
+    if (idusuario && !jugadorId && !entrenadorAutorId) {
+      if (rol === 'entrenador') {
+        const ent = await this.repository.getEntrenadorByUsuarioIdAsync(idusuario)
+        entrenadorAutorId = ent ? ent.identrenador : null
+      } else {
+        const jug = await this.repository.getJugadorByUsuarioIdAsync(idusuario)
+        jugadorId = jug ? jug.idjugador : null
+      }
+    }
+
+    // Validar reglas de rol
+    const esAutorEntrenador = Boolean(entrenadorAutorId || rol === 'entrenador')
+    const esAutorJugador = Boolean(jugadorId || rol === 'jugador')
+
+    if (tipoNormalizado === 'entrenador' && esAutorEntrenador) {
+      return {
+        puedeCalificar: false,
+        yaCalifico: false,
+        eventosPasados: [],
+        motivo: 'Un entrenador no puede calificar a otro entrenador.'
+      }
+    }
+
+    if (!esAutorJugador && !esAutorEntrenador) {
+      return {
+        puedeCalificar: false,
+        yaCalifico: false,
+        eventosPasados: [],
+        motivo: 'Rol no autorizado para calificar.'
+      }
+    }
+
+    // Validar auto-reseña
+    if (tipoNormalizado === 'entrenador' && entrenadorAutorId && Number(entrenadorAutorId) === entidadId) {
+      return {
+        puedeCalificar: false,
+        yaCalifico: false,
+        eventosPasados: [],
+        motivo: 'No puedes calificarte a ti mismo.'
+      }
+    }
+
+    // 1. Verificar si ya calificó previamente (duplicado)
     const yaCalifico = await this.repository.verificarExisteReseniaAsync({
       idjugador: jugadorId,
+      identrenador_autor: entrenadorAutorId,
       tipo: tipoNormalizado,
       id: entidadId
     })
 
-    // 2. Obtener eventos pasados en los que participó
+    // 2. Obtener eventos pasados completados si es jugador (puramente opcional)
     let eventosPasados = []
-    if (tipoNormalizado === 'club') {
-      eventosPasados = await this.repository.getEventosPasadosClubAsync({
-        idjugador: jugadorId,
-        idclub: entidadId
-      })
-    } else {
-      eventosPasados = await this.repository.getEventosPasadosEntrenadorAsync({
-        idjugador: jugadorId,
-        identrenador: entidadId
-      })
+    if (jugadorId) {
+      try {
+        if (tipoNormalizado === 'club') {
+          eventosPasados = await this.repository.getEventosPasadosClubAsync({
+            idjugador: jugadorId,
+            idclub: entidadId
+          })
+        } else {
+          eventosPasados = await this.repository.getEventosPasadosEntrenadorAsync({
+            idjugador: jugadorId,
+            identrenador: entidadId
+          })
+        }
+      } catch {
+        eventosPasados = []
+      }
     }
 
-    // 3. Puede calificar solo si no calificó antes y tiene al menos un evento pasado
-    const puedeCalificar = !yaCalifico && eventosPasados.length > 0
+    // 3. No exigir asistencia a eventos previos: puedeCalificar es true si no ha calificado antes
+    const puedeCalificar = !yaCalifico
 
     return {
       puedeCalificar,
       yaCalifico,
-      eventosPasados
+      eventosPasados: eventosPasados || []
     }
   }
 
@@ -250,6 +334,15 @@ class ReseniaService {
     if (!idusuario) return null
     const jugador = await this.repository.getJugadorByUsuarioIdAsync(idusuario)
     return jugador ? jugador.idjugador : null
+  }
+
+  /**
+   * Resuelve el identrenador para un idusuario dado.
+   */
+  async obtenerIdEntrenadorPorUsuario(idusuario) {
+    if (!idusuario) return null
+    const ent = await this.repository.getEntrenadorByUsuarioIdAsync(idusuario)
+    return ent ? ent.identrenador : null
   }
 }
 
