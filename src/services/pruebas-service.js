@@ -57,6 +57,22 @@ class PruebasService {
   if (!fechaprueba) throw { status: 400, message: 'La fecha de prueba es obligatoria' }
   if (!fechacierre) throw { status: 400, message: 'La fecha de cierre es obligatoria' }
 
+  // Validar que las fechas no sean anteriores a la fecha actual (no permitir fechas pasadas)
+  const d = new Date()
+  const hoy = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const fechaPruebaLimpia = String(fechaprueba).substring(0, 10)
+  const fechaCierreLimpia = String(fechacierre).substring(0, 10)
+
+  if (fechaPruebaLimpia < hoy) {
+    throw { status: 400, message: 'La fecha de la prueba no puede ser anterior a la fecha actual' }
+  }
+  if (fechaCierreLimpia < hoy) {
+    throw { status: 400, message: 'La fecha de cierre de inscripción no puede ser anterior a la fecha actual' }
+  }
+  if (fechaCierreLimpia > fechaPruebaLimpia) {
+    throw { status: 400, message: 'La fecha de cierre de inscripción no puede ser posterior a la fecha de la prueba' }
+  }
+
   // Validar estrictamente que 'estado' sea booleano o las cadenas 'true'/'false'
   if (typeof estado !== 'boolean') {
     if (estado == null) throw { status: 400, message: 'El estado debe ser true o false' }

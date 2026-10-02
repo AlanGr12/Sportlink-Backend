@@ -74,6 +74,14 @@ class EntrenamientosService {
     if (!genero) throw { status: 400, message: 'El género es obligatorio' }
     if (!nivel) throw { status: 400, message: 'El nivel es obligatorio' }
 
+    // Validar que la fecha no sea anterior a la fecha actual (no permitir fechas pasadas)
+    const d = new Date()
+    const hoy = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const fechaEntrLimpia = String(fechaentr).substring(0, 10)
+    if (fechaEntrLimpia < hoy) {
+      throw { status: 400, message: 'La fecha del entrenamiento no puede ser anterior a la fecha actual' }
+    }
+
     // validar y convertir estado: aceptar booleano o 'true'/'false' strings
     if (typeof estado !== 'boolean') {
       const s = String(estado).toLowerCase()
@@ -127,8 +135,6 @@ class EntrenamientosService {
     }
 
     // Crear grupo de chat para el entrenamiento (no interrumpe si falla)
-    // Nota: el FK en conversaciones se llama identrenamiento (sin 's'),
-    // pero el PK devuelto por el repositorio es identrenamientos (con 's')
     try {
       const idusuarioAdmin = idusuario ? Number(idusuario) : null
       
@@ -158,6 +164,15 @@ class EntrenamientosService {
       ubicacion, fechaentr, horainicio, horafin, estado, descripcion,
       genero, nivel
     } = data || {}
+
+    if (fechaentr) {
+      const d = new Date()
+      const hoy = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      const fechaEntrLimpia = String(fechaentr).substring(0, 10)
+      if (fechaEntrLimpia < hoy) {
+        throw { status: 400, message: 'La fecha del entrenamiento no puede ser anterior a la fecha actual' }
+      }
+    }
 
     let estadoBool = undefined
     if (estado !== undefined) {

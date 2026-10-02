@@ -1,6 +1,21 @@
 import supabase from '../configs/supabase-config.js'
 import Prueba from '../entities/prueba.js'
 
+function haPasado(fechaStr, horaFinStr) {
+  if (!fechaStr) return false
+  const d = new Date()
+  const hoyStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const fechaLimpia = String(fechaStr).substring(0, 10)
+  if (fechaLimpia < hoyStr) return true
+  if (fechaLimpia > hoyStr) return false
+  if (horaFinStr) {
+    const horaActual = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+    const horaFin = String(horaFinStr).substring(0, 5)
+    if (horaFin && horaFin < horaActual) return true
+  }
+  return false
+}
+
 class PruebasRepository {
 
   //"Este método verifica si la imagen es solo el nombre del archivo y, si es así, la convierte automáticamente en la URL pública de Supabase; si ya es una URL completa, la deja igual."
@@ -12,6 +27,8 @@ class PruebasRepository {
   }
 
   async getAllAsync() {
+    const d = new Date()
+    const hoy = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     const { data, error } = await supabase
       .from('pruebas')
       .select(`
@@ -19,10 +36,14 @@ class PruebasRepository {
         clubes ( idclub, nombre, fotoperfil, ubicacion ),
         deportes ( iddeporte, deporte )
       `)
+      .gte('fechaprueba', hoy)
+      .order('fechaprueba', { ascending: true })
 
     if (error) throw new Error(error.message)
 
-    return data.map(p => new Prueba(this.#normalizarImagen(p)))
+    return (data || [])
+      .filter(p => !haPasado(p.fechaprueba, p.horafin))
+      .map(p => new Prueba(this.#normalizarImagen(p)))
   }
 
   async getByIdAsync(id) {
@@ -43,6 +64,8 @@ class PruebasRepository {
   }
 
   async getAllDeporteAsync(jugador) {
+    const d = new Date()
+    const hoy = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     const { data, error } = await supabase
       .from('pruebas')
       .select(`
@@ -51,11 +74,15 @@ class PruebasRepository {
         deportes ( iddeporte, deporte )
       `)
       .eq('iddeporte', jugador.iddeporte)
+      .gte('fechaprueba', hoy)
+      .order('fechaprueba', { ascending: true })
 
     if (error) throw new Error(error.message)
     if (!data) return []
 
-    return data.map(p => new Prueba(this.#normalizarImagen(p)))
+    return (data || [])
+      .filter(p => !haPasado(p.fechaprueba, p.horafin))
+      .map(p => new Prueba(this.#normalizarImagen(p)))
   }
 
   async crearPrueba(idclub, iddeporte, cupo, horainicio, horafin, estado,
@@ -102,10 +129,7 @@ async existePrueba(idclub, iddeporte, fechaprueba,categoria,genero) {
     .eq('genero',genero)
     .single()
 
-
-//El código PGRST116 es el que devuelve Supabase cuando el .single() no encuentra ningún resultado, que en este caso no es un error sino simplemente que no existe duplicado, por eso lo ignoramos
-
-if (error && error.code !== 'PGRST116') throw new Error(error.message)
+  if (error && error.code !== 'PGRST116') throw new Error(error.message)
 
   return !!data
 }
