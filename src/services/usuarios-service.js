@@ -71,6 +71,7 @@ class UsuariosService {
       tipousuario: usuario.tipousuario,
       fotoperfil:  perfilExtra?.fotoperfil || null,
       nombre:      perfilExtra?.nombre     || null,
+      biografia:   usuario.biografia       || null,
     }
 
     return { token, perfil }
@@ -88,7 +89,13 @@ class UsuariosService {
     return {
       ...usuarioSinPassword,
       ...(perfil || {}),
+      biografia: usuario.biografia !== undefined ? usuario.biografia : (perfil?.biografia ?? null),
     }
+  }
+
+  async actualizarBiografiaAsync(idusuario, biografia) {
+    if (!idusuario) throw { status: 400, message: 'ID de usuario requerido' }
+    return await this.repository.actualizarBiografiaAsync(idusuario, biografia)
   }
 
 }
