@@ -35,7 +35,7 @@ router.get('/', async (req, res) => {
 })
 
 // GET /api/entrenamientos/deporte?idJugador=...
-//ejemplo GET /api/entrenamientos/deporte?idJugador=5
+// ejemplo GET /api/entrenamientos/deporte?idJugador=5
 router.get('/deporte', async (req, res) => {
   try {
     const idJugador = req.query.idJugador || req.query.id
@@ -68,7 +68,26 @@ router.get('/mios', verificarToken, requiereRol('entrenador'), async (req, res) 
 // POST /api/entrenamientos — Solo entrenadores pueden crear entrenamientos
 router.post('/', verificarToken, requiereRol('entrenador'), upload.single('imagen'), async (req, res) => {
   try {
-    const ent = await service.crearEntrenamiento(req.body, req.file, req.usuario.idusuario)
+    const direccion = (req.body.direccion === '' || req.body.direccion === undefined || req.body.direccion === null)
+      ? (req.body.direccion ?? null)
+      : req.body.direccion
+
+    const latitud = (req.body.latitud === '' || req.body.latitud === undefined || req.body.latitud === null)
+      ? (req.body.latitud ?? null)
+      : Number(req.body.latitud)
+
+    const longitud = (req.body.longitud === '' || req.body.longitud === undefined || req.body.longitud === null)
+      ? (req.body.longitud ?? null)
+      : Number(req.body.longitud)
+
+    const payload = {
+      ...req.body,
+      direccion: direccion === '' ? null : direccion,
+      latitud: latitud === '' ? null : latitud,
+      longitud: longitud === '' ? null : longitud
+    }
+
+    const ent = await service.crearEntrenamiento(payload, req.file, req.usuario.idusuario)
     res.status(StatusCodes.CREATED).json(ent)
   } catch (error) {
     res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
@@ -92,7 +111,27 @@ router.put('/:id', verificarToken, requiereRol('entrenador'), upload.single('ima
     if (isNaN(idEntrenamiento) || idEntrenamiento <= 0) {
       return res.status(StatusCodes.BAD_REQUEST).json({ error: 'ID inválido' })
     }
-    const ent = await service.editarEntrenamiento(idEntrenamiento, req.body, req.file, req.usuario.idusuario)
+
+    const direccion = (req.body.direccion === '' || req.body.direccion === undefined || req.body.direccion === null)
+      ? (req.body.direccion ?? null)
+      : req.body.direccion
+
+    const latitud = (req.body.latitud === '' || req.body.latitud === undefined || req.body.latitud === null)
+      ? (req.body.latitud ?? null)
+      : Number(req.body.latitud)
+
+    const longitud = (req.body.longitud === '' || req.body.longitud === undefined || req.body.longitud === null)
+      ? (req.body.longitud ?? null)
+      : Number(req.body.longitud)
+
+    const payload = {
+      ...req.body,
+      ...(direccion !== undefined && { direccion: direccion === '' ? null : direccion }),
+      ...(latitud !== undefined && { latitud: latitud === '' ? null : latitud }),
+      ...(longitud !== undefined && { longitud: longitud === '' ? null : longitud }),
+    }
+
+    const ent = await service.editarEntrenamiento(idEntrenamiento, payload, req.file, req.usuario.idusuario)
     res.status(StatusCodes.OK).json(ent)
   } catch (error) {
     res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })

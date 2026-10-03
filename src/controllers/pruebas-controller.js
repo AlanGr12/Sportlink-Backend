@@ -3,36 +3,11 @@ import { StatusCodes } from 'http-status-codes'
 import PruebasService from '../services/pruebas-service.js'
 import PruebaXJugador from '../services/pruebaxjugador.js'
 import { verificarToken, requiereRol } from '../middlewares/auth-middleware.js'
-
 import multer from 'multer'
 
 const router = Router()
 const service = new PruebasService()
 const service2 = new PruebaXJugador()
-
-// GET /api/pruebas
-router.get('/', async (req, res) => {
-  try {
-    const pruebas = await service.getAllAsync()
-    //const pruebasDeporte = await service2.getAllDeporteAsync();
-    res.status(StatusCodes.OK).json(pruebas)
-  } catch (error) {
-    res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
-  }
-})
-
-router.get('/deporte', async (req, res) => {
-  try {
-    const idJugador = req.query.idJugador || req.query.id
-    if (!idJugador) throw { status: 400, message: 'El id del jugador es obligatorio' }
-    const pruebasDeporte = await service2.getAllDeporteAsync(idJugador)
-    res.status(StatusCodes.OK).json(pruebasDeporte)
-  } catch (error) {
-    res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
-  }
-})
-
-
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -45,23 +20,109 @@ const upload = multer({
   }
 })
 
-// POST /api/pruebas/crearPrueba — Solo clubes pueden crear pruebas
-router.post('/crearPrueba', verificarToken, requiereRol('club'), upload.single('imagen'), async (req, res) => {
+// GET /api/pruebas
+router.get('/', async (req, res) => {
   try {
-    const prueba = await service.crearPrueba(req.body, req.file, req.usuario.idusuario)
+    const pruebas = await service.getAllAsync()
+    res.status(StatusCodes.OK).json(pruebas)
+  } catch (error) {
+    res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
+  }
+})
+
+// GET /api/pruebas/deporte
+router.get('/deporte', async (req, res) => {
+  try {
+    const idJugador = req.query.idJugador || req.query.id
+    if (!idJugador) throw { status: 400, message: 'El id del jugador es obligatorio' }
+    const pruebasDeporte = await service2.getAllDeporteAsync(idJugador)
+    res.status(StatusCodes.OK).json(pruebasDeporte)
+  } catch (error) {
+    res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
+  }
+})
+
+const handlerCrearPrueba = async (req, res) => {
+  try {
+    const direccion = (req.body.direccion === '' || req.body.direccion === undefined || req.body.direccion === null)
+      ? (req.body.direccion ?? null)
+      : req.body.direccion
+
+    const latitud = (req.body.latitud === '' || req.body.latitud === undefined || req.body.latitud === null)
+      ? (req.body.latitud ?? null)
+      : Number(req.body.latitud)
+
+    const longitud = (req.body.longitud === '' || req.body.longitud === undefined || req.body.longitud === null)
+      ? (req.body.longitud ?? null)
+      : Number(req.body.longitud)
+
+    const payload = {
+      ...req.body,
+      direccion: direccion === '' ? null : direccion,
+      latitud: latitud === '' ? null : latitud,
+      longitud: longitud === '' ? null : longitud
+    }
+
+    const prueba = await service.crearPrueba(payload, req.file, req.usuario.idusuario)
+    res.status(StatusCodes.OK).json(prueba)
+  } catch (error) {
+    res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
+  }
+}
+
+// POST /api/pruebas/crearPrueba — Solo clubes pueden crear pruebas
+router.post('/crearPrueba', verificarToken, requiereRol('club'), upload.single('imagen'), handlerCrearPrueba)
+
+// POST /api/pruebas — Alias estándar REST
+router.post('/', verificarToken, requiereRol('club'), upload.single('imagen'), handlerCrearPrueba)
+
+// GET /api/pruebas/:id
+router.get('/:id', async (req, res) => {
+  try {
+    const prueba = await service.getByIdAsync(req.params.id)
     res.status(StatusCodes.OK).json(prueba)
   } catch (error) {
     res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
   }
 })
 
-// GET /api/pruebas/:id
-router.get('/:id', async (req, res) => {
+const handlerActualizarPrueba = async (req, res) => {
   try {
-    const prueba = await service.getByIdAsync(req.params.id)
-    res.status(StatusCodes.CREATED).json(prueba)
+    const idPrueba = Number(req.params.id)
+    if (isNaN(idPrueba) || idPrueba <= 0) {
+      return res.status(StatusCodes.BAD_REQUEST).json({ error: 'ID inválido' })
+    }
+
+    const direccion = (req.body.direccion === '' || req.body.direccion === undefined || req.body.direccion === null)
+      ? (req.body.direccion ?? null)
+      : req.body.direccion
+
+    const latitud = (req.body.latitud === '' || req.body.latitud === undefined || req.body.latitud === null)
+      ? (req.body.latitud ?? null)
+      : Number(req.body.latitud)
+
+    const longitud = (req.body.longitud === '' || req.body.longitud === undefined || req.body.longitud === null)
+      ? (req.body.longitud ?? null)
+      : Number(req.body.longitud)
+
+    const payload = {
+      ...req.body,
+      ...(direccion !== undefined && { direccion: direccion === '' ? null : direccion }),
+      ...(latitud !== undefined && { latitud: latitud === '' ? null : latitud }),
+      ...(longitud !== undefined && { longitud: longitud === '' ? null : longitud }),
+    }
+
+    const prueba = await service.actualizarPruebaAsync(idPrueba, payload, req.file, req.usuario?.idusuario)
+    res.status(StatusCodes.OK).json(prueba)
   } catch (error) {
     res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
-  }})
+  }
+}
+
+// PUT /api/pruebas/:id — Actualización de prueba
+router.put('/:id', verificarToken, requiereRol('club'), upload.single('imagen'), handlerActualizarPrueba)
+
+// PUT /api/pruebas/actualizarPrueba/:id — Alias
+router.put('/actualizarPrueba/:id', verificarToken, requiereRol('club'), upload.single('imagen'), handlerActualizarPrueba)
 
 export default router

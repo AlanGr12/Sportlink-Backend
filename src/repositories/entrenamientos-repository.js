@@ -16,6 +16,12 @@ function haPasado(fechaStr, horaFinStr) {
   return false
 }
 
+const SELECT_ENTRENAMIENTO_QUERY = `
+  *,
+  deportes ( iddeporte, deporte ),
+  entrenadores ( identrenador, nombre )
+`
+
 class EntrenamientosRepository {
 
   // Convierte el nombre de archivo en URL pública completa de Supabase.
@@ -33,11 +39,7 @@ class EntrenamientosRepository {
     const hoy = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     const { data, error } = await supabase
       .from('entrenamientos')
-      .select(`
-        *,
-        deportes ( iddeporte, deporte ),
-        entrenadores ( identrenador, nombre )
-      `)
+      .select(SELECT_ENTRENAMIENTO_QUERY)
       .gte('fechaentr', hoy)
       .order('fechaentr', { ascending: true })
 
@@ -48,17 +50,17 @@ class EntrenamientosRepository {
       .map(e => new Entrenamiento(this.#normalizarImagen(e)))
   }
 
+  async getEntrenamientosAsync() {
+    return await this.getAllAsync()
+  }
+
   async getAllAsyncWithFilters(filters = {}) {
     const d = new Date()
     const hoy = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
     let query = supabase
       .from('entrenamientos')
-      .select(`
-        *,
-        deportes ( iddeporte, deporte ),
-        entrenadores ( identrenador, nombre )
-      `)
+      .select(SELECT_ENTRENAMIENTO_QUERY)
 
     if (filters.iddeporte) query = query.eq('iddeporte', filters.iddeporte)
     if (filters.identrenador) query = query.eq('identrenador', filters.identrenador)
@@ -89,11 +91,7 @@ class EntrenamientosRepository {
   async getByIdAsync(id) {
     const { data, error } = await supabase
       .from('entrenamientos')
-      .select(`
-        *,
-        deportes ( iddeporte, deporte ),
-        entrenadores ( identrenador, nombre )
-      `)
+      .select(SELECT_ENTRENAMIENTO_QUERY)
       .eq('identrenamientos', id)
       .single()
 
@@ -103,16 +101,16 @@ class EntrenamientosRepository {
     return new Entrenamiento(this.#normalizarImagen(data))
   }
 
+  async getEntrenamientoByIdAsync(id) {
+    return await this.getByIdAsync(id)
+  }
+
   async getAllDeporteAsync(jugador) {
     const d = new Date()
     const hoy = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     const { data, error } = await supabase
       .from('entrenamientos')
-      .select(`
-        *,
-        deportes ( iddeporte, deporte ),
-        entrenadores ( identrenador, nombre )
-      `)
+      .select(SELECT_ENTRENAMIENTO_QUERY)
       .eq('iddeporte', jugador.iddeporte)
       .gte('fechaentr', hoy)
       .order('fechaentr', { ascending: true })
@@ -125,26 +123,55 @@ class EntrenamientosRepository {
       .map(e => new Entrenamiento(this.#normalizarImagen(e)))
   }
 
-  async crearEntrenamiento(iddeporte, identrenador, precio, cantidad, titulo, imagen, ubicacion, fechaentr, horainicio, horafin, estado, descripcion, genero, nivel) {
+  async crearEntrenamiento(...args) {
+    let params
+    if (args.length === 1 && typeof args[0] === 'object' && args[0] !== null) {
+      params = args[0]
+    } else {
+      const [
+        iddeporte, identrenador, precio, cantidad, titulo, imagen,
+        ubicacion, fechaentr, horainicio, horafin, estado, descripcion,
+        genero, nivel, direccion, latitud, longitud
+      ] = args
+      params = {
+        iddeporte, identrenador, precio, cantidad, titulo, imagen,
+        ubicacion, fechaentr, horainicio, horafin, estado, descripcion,
+        genero, nivel, direccion, latitud, longitud
+      }
+    }
+
+    const lat = (params.latitud !== undefined && params.latitud !== null && params.latitud !== '')
+      ? Number(params.latitud)
+      : null
+    const lng = (params.longitud !== undefined && params.longitud !== null && params.longitud !== '')
+      ? Number(params.longitud)
+      : null
+    const dir = (params.direccion !== undefined && params.direccion !== null && params.direccion !== '')
+      ? params.direccion
+      : null
+
     const { data, error } = await supabase
       .from('entrenamientos')
       .insert({
-        iddeporte,
-        identrenador,
-        precio,
-        cantidad,
-        titulo,
-        imagen,
-        ubicacion,
-        fechaentr,
-        horainicio,
-        horafin,
-        estado,
-        descripcion,
-        genero,
-        nivel
+        iddeporte: params.iddeporte,
+        identrenador: params.identrenador,
+        precio: params.precio,
+        cantidad: params.cantidad,
+        titulo: params.titulo,
+        imagen: params.imagen,
+        ubicacion: params.ubicacion,
+        fechaentr: params.fechaentr,
+        horainicio: params.horainicio,
+        horafin: params.horafin,
+        estado: params.estado,
+        descripcion: params.descripcion,
+        genero: params.genero,
+        nivel: params.nivel,
+        direccion: dir,
+        latitud: lat,
+        longitud: lng
       })
-      .select(`*, deportes ( iddeporte, deporte ), entrenadores ( identrenador, nombre )`)
+      .select(SELECT_ENTRENAMIENTO_QUERY)
       .single()
 
     if (error) throw new Error(error.message)
@@ -152,11 +179,19 @@ class EntrenamientosRepository {
     return new Entrenamiento(this.#normalizarImagen(data))
   }
 
-  async editarEntrenamiento(id, updates) {
+  async crearEntrenamientoAsync(...args) {
+    return await this.crearEntrenamiento(...args)
+  }
+
+  async insertarAsync(...args) {
+    return await this.crearEntrenamiento(...args)
+  }
+
+  async editarEntrenamiento(id, updates = {}) {
     const permitidos = [
       'iddeporte', 'identrenador', 'precio', 'cantidad', 'titulo', 'imagen',
       'ubicacion', 'fechaentr', 'horainicio', 'horafin', 'estado', 'descripcion',
-      'genero', 'nivel'
+      'genero', 'nivel', 'direccion', 'latitud', 'longitud'
     ]
     const dataToUpdate = {}
     for (const p of permitidos) {
@@ -169,17 +204,43 @@ class EntrenamientosRepository {
     if (updates.horainicio === null) dataToUpdate.horainicio = null
     if (updates.horafin === null) dataToUpdate.horafin = null
 
+    if (updates.direccion !== undefined) {
+      dataToUpdate.direccion = (updates.direccion !== '' && updates.direccion !== null)
+        ? updates.direccion
+        : null
+    }
+
+    if (updates.latitud !== undefined) {
+      dataToUpdate.latitud = (updates.latitud !== null && updates.latitud !== '')
+        ? Number(updates.latitud)
+        : null
+    }
+
+    if (updates.longitud !== undefined) {
+      dataToUpdate.longitud = (updates.longitud !== null && updates.longitud !== '')
+        ? Number(updates.longitud)
+        : null
+    }
+
     const { data, error } = await supabase
       .from('entrenamientos')
       .update(dataToUpdate)
       .eq('identrenamientos', id)
-      .select(`*, deportes ( iddeporte, deporte ), entrenadores ( identrenador, nombre )`)
+      .select(SELECT_ENTRENAMIENTO_QUERY)
       .single()
 
     if (error) throw new Error(error.message)
     if (!data) return null
 
     return new Entrenamiento(this.#normalizarImagen(data))
+  }
+
+  async editarEntrenamientoAsync(id, updates) {
+    return await this.editarEntrenamiento(id, updates)
+  }
+
+  async actualizarEntrenamientoAsync(id, updates) {
+    return await this.editarEntrenamiento(id, updates)
   }
 
   async subirImagenEntrenamientoAsync(archivo) {

@@ -1,7 +1,8 @@
 class Prueba {
   constructor({ idprueba, cupo, horainicio, horafin, estado,
                 descripcion, imagen, categoria, zona, genero, fechaprueba,
-                fechacierre, createdat, clubes, deportes } = {}) {
+                fechacierre, createdat, clubes, deportes,
+                direccion, latitud, longitud } = {}) {
     this.idprueba    = idprueba
     this.cupo        = cupo
     this.horainicio  = horainicio
@@ -15,8 +16,11 @@ class Prueba {
     this.fechaprueba = fechaprueba
     this.fechacierre = fechacierre
     this.createdat   = createdat
-    this.club        = clubes   // { idclub, nombre, fotoperfil, ubicacion }
+    this.club        = clubes   // { idclub, nombre, fotoperfil, ubicacion, direccion, latitud, longitud }
     this.deporte     = deportes // { iddeporte, deporte }
+    this.direccion   = direccion ?? null
+    this.latitud     = (latitud !== undefined && latitud !== null && latitud !== '') ? Number(latitud) : null
+    this.longitud    = (longitud !== undefined && longitud !== null && longitud !== '') ? Number(longitud) : null
   }
 }
 

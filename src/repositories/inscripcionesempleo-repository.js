@@ -23,7 +23,7 @@ class InscripcionesEmpleoRepository {
         ),
         empleo (
           *,
-          clubes ( idclub, nombre, fotoperfil, ubicacion ),
+          clubes ( idclub, nombre, fotoperfil, ubicacion, direccion, latitud, longitud ),
           deportes ( iddeporte, deporte )
         )
       `)
@@ -61,7 +61,7 @@ class InscripcionesEmpleoRepository {
         ),
         empleo (
           *,
-          clubes ( idclub, nombre, fotoperfil, ubicacion ),
+          clubes ( idclub, nombre, fotoperfil, ubicacion, direccion, latitud, longitud ),
           deportes ( iddeporte, deporte )
         )
       `)

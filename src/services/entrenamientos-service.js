@@ -14,6 +14,10 @@ class EntrenamientosService {
     return await this.repository.getAllAsync()
   }
 
+  async getEntrenamientosAsync() {
+    return await this.getAllAsync()
+  }
+
   async getAllAsyncWithFilters(query) {
     const filters = {}
 
@@ -44,6 +48,10 @@ class EntrenamientosService {
     return ent
   }
 
+  async getEntrenamientoByIdAsync(id) {
+    return await this.getByIdAsync(id)
+  }
+
   async crearEntrenamiento(data, archivo, idusuario) {
     const {
       iddeporte,
@@ -59,7 +67,10 @@ class EntrenamientosService {
       estado,
       descripcion,
       genero,
-      nivel
+      nivel,
+      direccion,
+      latitud,
+      longitud
     } = data || {}
 
     if (!iddeporte) throw { status: 400, message: 'El deporte es obligatorio' }
@@ -96,6 +107,10 @@ class EntrenamientosService {
 
     if (!imagenUrl) throw { status: 400, message: 'La imagen es obligatoria' }
 
+    const dir = (direccion !== undefined && direccion !== null && direccion !== '') ? direccion : null
+    const lat = (latitud !== undefined && latitud !== null && latitud !== '') ? Number(latitud) : (latitud ?? null)
+    const lng = (longitud !== undefined && longitud !== null && longitud !== '') ? Number(longitud) : (longitud ?? null)
+
     const entrenamiento = await this.repository.crearEntrenamiento(
       iddeporte,
       identrenador,
@@ -110,7 +125,10 @@ class EntrenamientosService {
       estadoBool,
       descripcion,
       genero,
-      nivel
+      nivel,
+      dir,
+      lat,
+      lng
     )
 
     // Intentar crear evento en el calendario del entrenador (no interrumpe si falla)
@@ -158,11 +176,19 @@ class EntrenamientosService {
     return entrenamiento
   }
 
+  async crearEntrenamientoAsync(data, archivo, idusuario) {
+    return await this.crearEntrenamiento(data, archivo, idusuario)
+  }
+
+  async insertarAsync(data, archivo, idusuario) {
+    return await this.crearEntrenamiento(data, archivo, idusuario)
+  }
+
   async editarEntrenamiento(id, data, archivo, idusuario) {
     const {
       iddeporte, identrenador, precio, cantidad, titulo, imagen,
       ubicacion, fechaentr, horainicio, horafin, estado, descripcion,
-      genero, nivel
+      genero, nivel, direccion, latitud, longitud
     } = data || {}
 
     if (fechaentr) {
@@ -202,13 +228,30 @@ class EntrenamientosService {
       estado: estadoBool,
       descripcion,
       genero,
-      nivel
+      nivel,
+      ...(direccion !== undefined && {
+        direccion: (direccion !== '' && direccion !== null) ? direccion : null
+      }),
+      ...(latitud !== undefined && {
+        latitud: (latitud !== '' && latitud !== null) ? Number(latitud) : null
+      }),
+      ...(longitud !== undefined && {
+        longitud: (longitud !== '' && longitud !== null) ? Number(longitud) : null
+      })
     }
 
     const entrenamiento = await this.repository.editarEntrenamiento(id, updates)
     if (!entrenamiento) throw { status: 404, message: `No se pudo editar el entrenamiento ${id}` }
 
     return entrenamiento
+  }
+
+  async editarEntrenamientoAsync(id, data, archivo, idusuario) {
+    return await this.editarEntrenamiento(id, data, archivo, idusuario)
+  }
+
+  async actualizarEntrenamientoAsync(id, data, archivo, idusuario) {
+    return await this.editarEntrenamiento(id, data, archivo, idusuario)
   }
 }
 

@@ -8,7 +8,7 @@ class EmpleoRepository {
       .from('empleo')
       .select(`
         *,
-        clubes ( idclub, nombre, fotoperfil, ubicacion ),
+        clubes ( idclub, nombre, fotoperfil, ubicacion, direccion, latitud, longitud ),
         deportes ( iddeporte, deporte )
       `)
 
@@ -22,7 +22,7 @@ class EmpleoRepository {
       .from('empleo')
       .select(`
         *,
-        clubes ( idclub, nombre, fotoperfil, ubicacion ),
+        clubes ( idclub, nombre, fotoperfil, ubicacion, direccion, latitud, longitud ),
         deportes ( iddeporte, deporte )
       `)
       .eq('idempleo', id)
@@ -39,7 +39,7 @@ class EmpleoRepository {
       .from('empleo')
       .select(`
         *,
-        clubes ( idclub, nombre, fotoperfil, ubicacion ),
+        clubes ( idclub, nombre, fotoperfil, ubicacion, direccion, latitud, longitud ),
         deportes ( iddeporte, deporte )
       `)
       .eq('idclub', idclub)
@@ -81,7 +81,7 @@ class EmpleoRepository {
       })
       .select(`
         *,
-        clubes ( idclub, nombre, fotoperfil, ubicacion ),
+        clubes ( idclub, nombre, fotoperfil, ubicacion, direccion, latitud, longitud ),
         deportes ( iddeporte, deporte )
       `)
       .single()

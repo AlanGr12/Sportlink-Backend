@@ -264,7 +264,10 @@ class CalendarioEventosRepository {
           categoria,
           genero,
           estado,
-          clubes ( idclub, nombre, fotoperfil, ubicacion ),
+          direccion,
+          latitud,
+          longitud,
+          clubes ( idclub, nombre, fotoperfil, ubicacion, direccion, latitud, longitud ),
           deportes ( iddeporte, deporte )
         )
       `)
@@ -361,7 +364,7 @@ class CalendarioEventosRepository {
         empleo (
           idempleo,
           nombre,
-          clubes ( idclub, nombre, fotoperfil, ubicacion )
+          clubes ( idclub, nombre, fotoperfil, ubicacion, direccion, latitud, longitud )
         ),
         entrevistas (
           identrevista,
@@ -452,6 +455,9 @@ class CalendarioEventosRepository {
         horafin,
         descripcion,
         imagen,
+        direccion,
+        latitud,
+        longitud,
         deportes ( deporte )
       `)
       .eq('idclub', idclub)
