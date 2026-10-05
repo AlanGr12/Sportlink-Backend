@@ -2,9 +2,21 @@ import { Router } from 'express'
 import { StatusCodes } from 'http-status-codes'
 import UsuariosService from '../services/usuarios-service.js'
 import { verificarToken } from '../middlewares/auth-middleware.js'
+import multer from 'multer'
 
 const router = Router()
 const service = new UsuariosService()
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const permitidos = ['image/jpeg', 'image/png', 'image/webp']
+    permitidos.includes(file.mimetype)
+      ? cb(null, true)
+      : cb(new Error('Solo se permiten imágenes JPG, PNG o WEBP'))
+  }
+})
 
 // POST /api/login
 // Pública — valida credenciales y devuelve { token, perfil }
@@ -39,6 +51,31 @@ router.put('/perfil/biografia', verificarToken, async (req, res) => {
     console.error('[ACTUALIZAR BIOGRAFIA ERROR]', error)
     res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
   }
+})
+
+// PUT /api/login/perfil/foto
+// Protegida con JWT — el usuario autenticado cambia su foto de perfil (multipart, campo "foto")
+// IMPORTANTE: debe declararse antes de PUT /perfil/:idusuario
+router.put('/perfil/foto', verificarToken, (req, res) => {
+  upload.single('foto')(req, res, async (err) => {
+    if (err) {
+      const mensaje = err.code === 'LIMIT_FILE_SIZE' ? 'La imagen no puede superar los 5 MB' : err.message
+      return res.status(StatusCodes.BAD_REQUEST).json({ error: mensaje })
+    }
+
+    const { idusuario, tipousuario } = req.usuario || {}
+    if (!idusuario) {
+      return res.status(StatusCodes.UNAUTHORIZED).json({ error: 'Usuario no autenticado' })
+    }
+
+    try {
+      const fotoperfil = await service.actualizarFotoPerfilAsync(idusuario, tipousuario, req.file)
+      res.status(StatusCodes.OK).json({ mensaje: 'Foto de perfil actualizada correctamente', fotoperfil })
+    } catch (error) {
+      console.error('[ACTUALIZAR FOTO ERROR]', error)
+      res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
+    }
+  })
 })
 
 // GET /api/login/perfil/:idusuario

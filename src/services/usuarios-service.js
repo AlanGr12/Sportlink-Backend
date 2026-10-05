@@ -93,6 +93,19 @@ class UsuariosService {
     }
   }
 
+  async actualizarFotoPerfilAsync(idusuario, tipousuario, archivo) {
+    if (!idusuario) throw { status: 400, message: 'ID de usuario requerido' }
+    if (!archivo) throw { status: 400, message: 'Debes enviar una imagen en el campo "foto"' }
+
+    const tipo = String(tipousuario || '').toLowerCase()
+    const carpeta = { jugador: 'jugadores', entrenador: 'entrenadores', club: 'clubes' }[tipo]
+    if (!carpeta) throw { status: 400, message: 'Tipo de usuario no soporta foto de perfil' }
+
+    const url = await this.repository.subirFotoPerfilAsync(archivo, carpeta)
+    await this.repository.actualizarFotoPerfilAsync(idusuario, tipo, url)
+    return url
+  }
+
   async actualizarBiografiaAsync(idusuario, biografia) {
     if (!idusuario) throw { status: 400, message: 'ID de usuario requerido' }
     return await this.repository.actualizarBiografiaAsync(idusuario, biografia)

@@ -89,6 +89,45 @@ class UsuariosRepository {
     }
   }
 
+  /**
+   * Sube una foto de perfil al bucket 'fotoPerfiles' y devuelve su URL pública.
+   */
+  async subirFotoPerfilAsync(archivo, carpeta) {
+    const nombreSeguro = archivo.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')
+    const nombreUnico = `${carpeta}/${Date.now()}-${nombreSeguro}`
+
+    const { error } = await supabase.storage
+      .from('fotoPerfiles')
+      .upload(nombreUnico, archivo.buffer, { contentType: archivo.mimetype })
+
+    if (error) throw new Error(error.message)
+
+    const { data } = supabase.storage
+      .from('fotoPerfiles')
+      .getPublicUrl(nombreUnico)
+
+    return data.publicUrl
+  }
+
+  /**
+   * Actualiza fotoperfil en la tabla de rol (jugadores / entrenadores / clubes).
+   */
+  async actualizarFotoPerfilAsync(idusuario, tipousuario, url) {
+    const tablas = { jugador: 'jugadores', entrenador: 'entrenadores', club: 'clubes' }
+    const tabla = tablas[tipousuario]
+    if (!tabla) throw { status: 400, message: 'Tipo de usuario no soporta foto de perfil' }
+
+    const { data, error } = await supabase
+      .from(tabla)
+      .update({ fotoperfil: url })
+      .eq('idusuario', idusuario)
+      .select('fotoperfil')
+      .single()
+
+    if (error) throw new Error(error.message)
+    return data
+  }
+
   async getPerfilByUsuarioAsync(idusuario, tipousuario) {
     let tabla = ''
     if (tipousuario === 'jugador') tabla = 'jugadores'
