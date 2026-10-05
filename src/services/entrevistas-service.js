@@ -1,12 +1,14 @@
 import EntrevistasRepository from '../repositories/entrevistas-repository.js'
 import InscripcionesEmpleoRepository from '../repositories/inscripcionesempleo-repository.js'
 import CalendarioEventosService from './calendarioeventos-service.js'
+import NotificacionesService from './notificaciones-service.js'
 
 class EntrevistasService {
   constructor() {
     this.repository = new EntrevistasRepository()
     this.inscripcionesRepo = new InscripcionesEmpleoRepository()
     this.calendarioService = new CalendarioEventosService()
+    this.notificaciones = new NotificacionesService()
   }
 
   async getAllByInscripcionAsync(idinscripcion) {
@@ -52,6 +54,8 @@ class EntrevistasService {
         const empleoNombre = inscripcion.empleo ? inscripcion.empleo.nombre : 'Empleo'
         const clubNombre = (inscripcion.empleo && inscripcion.empleo.clubes) ? inscripcion.empleo.clubes.nombre : 'Club'
         
+        await this.notificaciones.notificarEntrevistaProgramada({ id_usuario: idusuario, empleo: empleoNombre, club: clubNombre, fecha })
+
         await this.calendarioService.crearEvento({
           idusuario: idusuario,
           tipo: 'ENTREVISTA',

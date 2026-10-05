@@ -1,10 +1,12 @@
 import InscripcionesEmpleoRepository from '../repositories/inscripcionesempleo-repository.js'
 import supabase from '../configs/supabase-config.js'
 import chatRepository from '../repositories/chat-repository.js'
+import NotificacionesService from './notificaciones-service.js'
 
 class InscripcionesEmpleoService {
   constructor() {
     this.repository = new InscripcionesEmpleoRepository()
+    this.notificaciones = new NotificacionesService()
   }
 
   async getAllAsync(idempleo = null) {
@@ -103,7 +105,16 @@ class InscripcionesEmpleoService {
   async marcarContratado(id) {
     // Verificar que exista
     const ins = await this.getByIdAsync(id)
-    return await this.repository.marcarContratado(id)
+    const resultado = await this.repository.marcarContratado(id)
+
+    if (ins?.entrenador?.idusuario) {
+      await this.notificaciones.notificarContratacion({
+        id_usuario: ins.entrenador.idusuario,
+        empleo: ins.empleo?.nombre || 'un empleo',
+        club: ins.empleo?.clubes?.nombre || 'Un club'
+      })
+    }
+    return resultado
   }
 }
 

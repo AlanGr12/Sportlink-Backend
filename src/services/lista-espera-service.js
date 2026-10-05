@@ -5,6 +5,7 @@ import EntrenamientosRepository from '../repositories/entrenamientos-repository.
 import JugadoresRepository from '../repositories/jugadores-repository.js'
 import chatRepository from '../repositories/chat-repository.js'
 import CalendarioEventosService from './calendarioeventos-service.js'
+import NotificacionesService from './notificaciones-service.js'
 
 class ListaEsperaService {
   /** @param {'prueba'|'entrenamiento'} tipo */
@@ -14,6 +15,7 @@ class ListaEsperaService {
     this.actividadRepo = tipo === 'prueba' ? new PruebasRepository() : new EntrenamientosRepository()
     this.jugadoresRepo = new JugadoresRepository()
     this.calendarioService = new CalendarioEventosService()
+    this.notificaciones = new NotificacionesService()
   }
 
   async #resolverJugador(idusuario) {
@@ -105,7 +107,6 @@ class ListaEsperaService {
       if (!idJugadorPromovido) return null
 
       await this.#efectosPromocion(idActividad, idJugadorPromovido, actividad)
-      // TODO (opcional): notificar al jugador promovido cuando exista un módulo de notificaciones.
       console.log(`[lista-espera] Jugador ${idJugadorPromovido} promovido en ${this.tipo} ${idActividad}`)
       return idJugadorPromovido
     } catch (err) {
@@ -120,6 +121,16 @@ class ListaEsperaService {
     try {
       const jugador = await this.jugadoresRepo.getByIdAsync(idJugador)
       if (!jugador) return
+
+      const nombreActividad = esPrueba
+        ? `la prueba de ${actividad.club?.nombre || 'un club'}${actividad.categoria ? ` (${actividad.categoria})` : ''}`
+        : `el entrenamiento ${actividad.titulo || ''}`.trim()
+      await this.notificaciones.notificarPromocionListaEspera({
+        id_usuario: jugador.idusuario,
+        nombreActividad,
+        tipoActividad: this.tipo,
+        idActividad
+      })
 
       await this.calendarioService.crearEvento({
         idusuario: jugador.idusuario,
