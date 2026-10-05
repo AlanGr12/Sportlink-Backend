@@ -4,6 +4,7 @@ import PruebasRepository from '../repositories/pruebas-repository.js'
 import CalendarioEventosService from './calendarioeventos-service.js'
 import chatRepository from '../repositories/chat-repository.js'
 import supabase from '../configs/supabase-config.js'
+import ListaEsperaService from './lista-espera-service.js'
 
 class InscripcionesPruebaService {
   constructor() {
@@ -11,6 +12,7 @@ class InscripcionesPruebaService {
     this.jugadoresRepo = new JugadoresRepository()
     this.pruebasRepo = new PruebasRepository()
     this.calendarioService = new CalendarioEventosService()
+    this.listaEspera = new ListaEsperaService('prueba')
   }
 
   async getAllAsync(idprueba = null) {
@@ -31,6 +33,16 @@ class InscripcionesPruebaService {
 
     const existe = await this.repository.isInscrito(idjugador, idprueba)
     if (existe) throw { status: 400, message: 'El jugador ya está inscripto en esta prueba' }
+
+    // Validar cupo disponible
+    const pruebaCupo = await this.pruebasRepo.getByIdAsync(idprueba)
+    const capacidad = Number(pruebaCupo?.cupo || 0)
+    if (capacidad > 0) {
+      const inscriptos = await this.repository.getAllAsync(idprueba)
+      if ((inscriptos?.length || 0) >= capacidad) {
+        throw { status: 400, message: 'No hay cupos disponibles para esta prueba' }
+      }
+    }
 
     const ins = await this.repository.crearInscripcion(idjugador, idprueba)
 
@@ -148,6 +160,9 @@ class InscripcionesPruebaService {
     } catch (errChat) {
       console.error('Error eliminando de chat:', errChat.message)
     }
+
+    // Promoción automática: el primero de la lista de espera ocupa el lugar liberado
+    await this.listaEspera.promoverSiguiente(idprueba)
 
     return { message: 'Inscripción eliminada exitosamente' }
   }

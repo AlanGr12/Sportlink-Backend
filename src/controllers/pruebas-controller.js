@@ -3,6 +3,7 @@ import { StatusCodes } from 'http-status-codes'
 import PruebasService from '../services/pruebas-service.js'
 import PruebaXJugador from '../services/pruebaxjugador.js'
 import { verificarToken, requiereRol } from '../middlewares/auth-middleware.js'
+import ListaEsperaService from '../services/lista-espera-service.js'
 import multer from 'multer'
 
 const router = Router()
@@ -75,6 +76,20 @@ router.post('/crearPrueba', verificarToken, requiereRol('club'), upload.single('
 
 // POST /api/pruebas — Alias estándar REST
 router.post('/', verificarToken, requiereRol('club'), upload.single('imagen'), handlerCrearPrueba)
+
+// ── Lista de espera (/api/pruebas/:id/lista-espera) — solo jugadores ──
+const listaEspera = new ListaEsperaService('prueba')
+const handlerListaEspera = (accion) => async (req, res) => {
+  try {
+    const result = await listaEspera[accion](req.params.id, req.usuario.idusuario)
+    res.status(accion === 'anotarse' ? StatusCodes.CREATED : StatusCodes.OK).json(result)
+  } catch (error) {
+    res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
+  }
+}
+router.post('/:id/lista-espera', verificarToken, requiereRol('jugador'), handlerListaEspera('anotarse'))
+router.delete('/:id/lista-espera', verificarToken, requiereRol('jugador'), handlerListaEspera('salir'))
+router.get('/:id/lista-espera/posicion', verificarToken, requiereRol('jugador'), handlerListaEspera('obtenerPosicion'))
 
 // GET /api/pruebas/:id
 router.get('/:id', async (req, res) => {

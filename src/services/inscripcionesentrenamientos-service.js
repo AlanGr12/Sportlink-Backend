@@ -3,6 +3,7 @@ import JugadoresRepository from '../repositories/jugadores-repository.js'
 import EntrenamientosRepository from '../repositories/entrenamientos-repository.js'
 import CalendarioEventosService from './calendarioeventos-service.js'
 import supabase from '../configs/supabase-config.js'
+import ListaEsperaService from './lista-espera-service.js'
 import chatRepository from '../repositories/chat-repository.js'
 
 class InscripcionesEntrenamientosService {
@@ -10,6 +11,7 @@ class InscripcionesEntrenamientosService {
     this.repository = new InscripcionesEntrenamientosRepository()
     this.jugadoresRepo = new JugadoresRepository()
     this.calendarioService = new CalendarioEventosService()
+    this.listaEspera = new ListaEsperaService('entrenamiento')
   }
 
   async getAllAsync(identrenamiento = null) {
@@ -165,6 +167,9 @@ class InscripcionesEntrenamientosService {
     } catch (errChat) {
       console.error('Error eliminando de chat:', errChat.message)
     }
+
+    // Promoción automática: el primero de la lista de espera ocupa el lugar liberado
+    await this.listaEspera.promoverSiguiente(identrenamiento)
 
     return { message: 'Inscripción eliminada exitosamente' }
   }
