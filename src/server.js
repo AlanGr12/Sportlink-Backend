@@ -27,6 +27,7 @@ import iaRoutes from './routes/ia.routes.js'
 import reseniaRoutes from './routes/resenia.routes.js'
 import notificacionesRoutes from './routes/notificaciones-routes.js'
 import seguidoresRoutes from './routes/seguidores-routes.js'
+import recomendacionesRoutes from './routes/recomendaciones-routes.js'
 import { iniciarRecordatorios } from './services/recordatorios-service.js'
 
 const app = express()
@@ -58,6 +59,7 @@ app.use('/api/ia', iaRoutes)
 app.use('/api/resenias', reseniaRoutes)
 app.use('/api/notificaciones', notificacionesRoutes)
 app.use('/api/seguidores', seguidoresRoutes)
+app.use('/api/recomendaciones', recomendacionesRoutes)
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`)
   iniciarRecordatorios()
