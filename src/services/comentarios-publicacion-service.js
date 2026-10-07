@@ -1,5 +1,6 @@
 import ComentariosRepository from '../repositories/comentarios-publicacion-repository.js'
 import PublicacionesRepository from '../repositories/publicaciones-repository.js'
+import eventos from './notificaciones-eventos-service.js'
 
 class ComentariosPublicacionService {
 
@@ -24,7 +25,9 @@ class ComentariosPublicacionService {
     const pub = await PublicacionesRepository.getRawByIdAsync(idpublicacion)
     if (!pub) throw { status: 404, message: 'Publicación no encontrada' }
 
-    return await ComentariosRepository.crearComentarioAsync(idpublicacion, idusuario, contenido)
+    const comentario = await ComentariosRepository.crearComentarioAsync(idpublicacion, idusuario, contenido)
+    eventos.comentarios(idpublicacion, true)
+    return comentario
   }
 
   /**
@@ -60,6 +63,7 @@ class ComentariosPublicacionService {
     }
 
     await ComentariosRepository.eliminarComentarioAsync(id)
+    eventos.comentarios(comentario.idpublicacion, false)
   }
 }
 

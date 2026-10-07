@@ -5,6 +5,7 @@ import CalendarioEventosService from './calendarioeventos-service.js'
 import supabase from '../configs/supabase-config.js'
 import ListaEsperaService from './lista-espera-service.js'
 import chatRepository from '../repositories/chat-repository.js'
+import eventos from './notificaciones-eventos-service.js'
 
 class InscripcionesEntrenamientosService {
   constructor() {
@@ -38,6 +39,9 @@ class InscripcionesEntrenamientosService {
     if (existe) throw { status: 400, message: 'El jugador ya está inscripto en este entrenamiento' }
 
     const ins = await this.repository.crearInscripcion(entrenamientoId, jugadorId)
+
+    // Avisar al entrenador de la nueva inscripción (no bloquea)
+    eventos.inscripcionEntrenamiento(entrenamientoId, jugadorId)
 
     // Intentar crear evento en calendario para el entrenamiento
     try {

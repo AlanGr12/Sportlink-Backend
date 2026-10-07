@@ -1,6 +1,6 @@
 import NotificacionesRepository from '../repositories/notificaciones-repository.js'
 
-export const TIPOS_NOTIFICACION = ['LISTA_ESPERA', 'PRUEBA', 'ENTRENAMIENTO', 'EMPLEO', 'CHAT', 'SISTEMA']
+export const TIPOS_NOTIFICACION = ['LISTA_ESPERA', 'PRUEBA', 'ENTRENAMIENTO', 'EMPLEO', 'CHAT', 'SISTEMA', 'LIKE', 'COMENTARIO', 'SEGUIDOR', 'RECORDATORIO']
 
 class NotificacionesService {
   constructor() {

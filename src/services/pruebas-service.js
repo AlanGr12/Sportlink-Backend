@@ -2,6 +2,7 @@ import PruebasRepository from '../repositories/pruebas-repository.js'
 import ClubesRepository from '../repositories/clubes-repository.js'
 import CalendarioEventosService from './calendarioeventos-service.js'
 import chatRepository from '../repositories/chat-repository.js'
+import eventos from './notificaciones-eventos-service.js'
 
 class PruebasService {
   constructor() {
@@ -161,6 +162,9 @@ class PruebasService {
     } catch (errChat) {
       console.error('[pruebas-service] Error creando grupo de chat para prueba:', errChat.message)
     }
+
+    // Avisar a los deportistas que siguen al club (no bloquea)
+    eventos.nuevaActividad('prueba', prueba.idprueba)
 
     return prueba
   }

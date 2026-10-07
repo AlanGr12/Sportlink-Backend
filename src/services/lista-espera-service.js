@@ -6,6 +6,7 @@ import JugadoresRepository from '../repositories/jugadores-repository.js'
 import chatRepository from '../repositories/chat-repository.js'
 import CalendarioEventosService from './calendarioeventos-service.js'
 import NotificacionesService from './notificaciones-service.js'
+import eventos from './notificaciones-eventos-service.js'
 
 class ListaEsperaService {
   /** @param {'prueba'|'entrenamiento'} tipo */
@@ -131,6 +132,9 @@ class ListaEsperaService {
         tipoActividad: this.tipo,
         idActividad
       })
+
+      // Avisar también al organizador (club / entrenador) de que ingresó alguien de la lista de espera
+      eventos.promocionListaEspera(this.tipo, idActividad, idJugador)
 
       await this.calendarioService.crearEvento({
         idusuario: jugador.idusuario,

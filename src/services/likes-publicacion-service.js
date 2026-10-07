@@ -1,5 +1,6 @@
 import LikesRepository from '../repositories/likes-publicacion-repository.js'
 import PublicacionesRepository from '../repositories/publicaciones-repository.js'
+import eventos from './notificaciones-eventos-service.js'
 
 class LikesPublicacionService {
 
@@ -16,6 +17,8 @@ class LikesPublicacionService {
     await LikesRepository.darLikeAsync(idpublicacion, idusuario)
     const totalLikes = await LikesRepository.getTotalLikesAsync(idpublicacion)
 
+    eventos.likes(idpublicacion, true)
+
     return { liked: true, totalLikes }
   }
 
@@ -31,6 +34,8 @@ class LikesPublicacionService {
 
     await LikesRepository.sacarLikeAsync(idpublicacion, idusuario)
     const totalLikes = await LikesRepository.getTotalLikesAsync(idpublicacion)
+
+    eventos.likes(idpublicacion, false)
 
     return { liked: false, totalLikes }
   }

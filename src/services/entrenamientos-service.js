@@ -2,6 +2,7 @@ import EntrenamientosRepository from '../repositories/entrenamientos-repository.
 import EntrenadoresRepository from '../repositories/entrenadores-repository.js'
 import CalendarioEventosService from './calendarioeventos-service.js'
 import chatRepository from '../repositories/chat-repository.js'
+import eventos from './notificaciones-eventos-service.js'
 
 class EntrenamientosService {
   constructor() {
@@ -172,6 +173,9 @@ class EntrenamientosService {
     } catch (errChat) {
       console.error('[entrenamientos-service] Error creando grupo de chat para entrenamiento:', errChat.message)
     }
+
+    // Avisar a los deportistas que siguen al entrenador (no bloquea)
+    eventos.nuevaActividad('entrenamiento', entrenamiento.identrenamientos)
 
     return entrenamiento
   }

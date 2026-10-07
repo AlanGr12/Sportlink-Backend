@@ -5,6 +5,7 @@ import CalendarioEventosService from './calendarioeventos-service.js'
 import chatRepository from '../repositories/chat-repository.js'
 import supabase from '../configs/supabase-config.js'
 import ListaEsperaService from './lista-espera-service.js'
+import eventos from './notificaciones-eventos-service.js'
 
 class InscripcionesPruebaService {
   constructor() {
@@ -45,6 +46,9 @@ class InscripcionesPruebaService {
     }
 
     const ins = await this.repository.crearInscripcion(idjugador, idprueba)
+
+    // Avisar al club de la nueva inscripción (no bloquea)
+    eventos.inscripcionPrueba(idprueba, idjugador)
 
     // Intentar crear evento en calendario (no romper la inscripción si falla)
     try {

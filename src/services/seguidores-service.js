@@ -1,5 +1,6 @@
 import seguidoresRepository from '../repositories/seguidores-repository.js'
 import UsuariosRepository from '../repositories/usuarios-repository.js'
+import eventos from './notificaciones-eventos-service.js'
 
 const usuariosRepository = new UsuariosRepository()
 
@@ -35,11 +36,13 @@ class SeguidoresService {
       throw { status: 400, message: 'Solo se puede seguir a clubes y entrenadores' }
     }
     await seguidoresRepository.seguirAsync(Number(idseguidor), Number(idseguido))
+    await eventos.seguidores(Number(idseguido), true)
     return await this.getEstado(idseguido, idseguidor)
   }
 
   async dejarDeSeguir(idseguido, idseguidor) {
     await seguidoresRepository.dejarDeSeguirAsync(Number(idseguidor), Number(idseguido))
+    await eventos.seguidores(Number(idseguido), false)
     return await this.getEstado(idseguido, idseguidor)
   }
 

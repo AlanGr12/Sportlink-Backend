@@ -1,6 +1,7 @@
 import moderacionRepository from '../repositories/moderacion-repository.js'
 import EmpleoRepository from '../repositories/empleo-repository.js'
 import UsuariosRepository from '../repositories/usuarios-repository.js'
+import eventos from './notificaciones-eventos-service.js'
 
 const usuariosRepository = new UsuariosRepository()
 const esAdmin = (usuario) => usuario?.es_admin === true
@@ -22,7 +23,10 @@ class ModeracionService {
     if (!esAdmin(usuario) && Number(duenio) !== Number(usuario.idusuario)) {
       throw { status: 403, message: 'No tienes permiso para eliminar esta vacante' }
     }
+    const aviso = await moderacionRepository.getDatosAvisoEmpleoAsync(id)
     await moderacionRepository.eliminarEmpleoAsync(id)
+    // Recién con la vacante eliminada se avisa a los entrenadores postulados
+    eventos.vacanteEliminada(aviso)
   }
 
   async eliminarEntrenamiento(id, usuario) {

@@ -101,6 +101,19 @@ class ModeracionRepository {
     await borrarPrincipal('pruebas', 'idprueba', idprueba)
   }
 
+  /** Datos para avisar a los postulados (activos) antes de borrar la vacante. */
+  async getDatosAvisoEmpleoAsync(idempleo) {
+    const { data: empleo } = await supabase
+      .from('empleo').select('nombre, clubes ( nombre )').eq('idempleo', idempleo).maybeSingle()
+    const { data: insc } = await supabase
+      .from('inscripcionesempleo').select('entrenadores ( idusuario )').eq('idempleo', idempleo).eq('estado', true)
+    return {
+      nombreEmpleo: empleo?.nombre,
+      nombreClub: empleo?.clubes?.nombre,
+      idsUsuarios: (insc || []).map(i => i.entrenadores?.idusuario).filter(Boolean),
+    }
+  }
+
   async eliminarEmpleoAsync(idempleo) {
     await this.#limpiarEmpleos([idempleo])
     await borrarPrincipal('empleo', 'idempleo', idempleo)

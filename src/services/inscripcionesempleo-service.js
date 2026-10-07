@@ -3,6 +3,7 @@ import supabase from '../configs/supabase-config.js'
 import chatRepository from '../repositories/chat-repository.js'
 import EmpleoRepository from '../repositories/empleo-repository.js'
 import NotificacionesService from './notificaciones-service.js'
+import eventos from './notificaciones-eventos-service.js'
 
 class InscripcionesEmpleoService {
   constructor() {
@@ -72,6 +73,9 @@ class InscripcionesEmpleoService {
     }
 
     const ins = await this.repository.crearInscripcion(identrenador, idempleo)
+
+    // Avisar al club de la nueva postulación (no bloquea)
+    eventos.postulacionEmpleo(idempleo, identrenador)
 
     // Agregar al entrenador al grupo de chat del empleo (o crearlo — auto-reparación)
     try {
