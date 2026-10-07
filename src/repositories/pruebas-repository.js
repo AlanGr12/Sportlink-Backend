@@ -18,7 +18,7 @@ function haPasado(fechaStr, horaFinStr) {
 
 const SELECT_PRUEBA_QUERY = `
   *,
-  clubes ( idclub, nombre, fotoperfil, ubicacion, direccion, latitud, longitud ),
+  clubes ( idclub, idusuario, nombre, fotoperfil, ubicacion, direccion, latitud, longitud ),
   deportes ( iddeporte, deporte )
 `
 

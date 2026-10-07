@@ -158,6 +158,8 @@ class ModeracionRepository {
     await borrar('mensajes', 'idusuarioemisor', idusuario)
     await borrar('participantes_conversacion', 'idusuario', idusuario)
     await borrar('notificaciones', 'id_usuario', idusuario)
+    await borrar('seguidores', 'idseguidor', idusuario)
+    await borrar('seguidores', 'idseguido', idusuario)
     await borrar('calendarioeventos', 'idusuario', idusuario)
 
     await borrarPrincipal('usuarios', 'idusuario', idusuario)

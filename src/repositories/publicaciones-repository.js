@@ -2,6 +2,7 @@ import supabase from '../configs/supabase-config.js'
 import { resolverAutor } from '../utils/resolver-autor.js'
 import LikesRepository from './likes-publicacion-repository.js'
 import ComentariosRepository from './comentarios-publicacion-repository.js'
+import SeguidoresRepository from './seguidores-repository.js'
 
 class PublicacionesRepository {
 
@@ -131,6 +132,54 @@ class PublicacionesRepository {
     return data
   }
 
+  /**
+   * Página del feed con las publicaciones de las cuentas seguidas primero (más recientes
+   * primero dentro de cada grupo) y el resto después. Paginación por offset sobre la
+   * lista virtual [seguidos..., resto...].
+   */
+  async #getPaginaSeguidosPrimero(seguidos, from, to) {
+    const noSeguidos = `(${seguidos.join(',')})`
+    const cantidad = to - from + 1
+
+    const contar = async (q) => {
+      const { count, error } = await q
+      if (error) throw new Error(error.message)
+      return count || 0
+    }
+
+    const [totalSeguidos, totalResto] = await Promise.all([
+      contar(supabase.from('publicaciones').select('idpublicacion', { count: 'exact', head: true }).in('idusuario', seguidos)),
+      contar(supabase.from('publicaciones').select('idpublicacion', { count: 'exact', head: true }).not('idusuario', 'in', noSeguidos)),
+    ])
+
+    let filas = []
+    if (from < totalSeguidos) {
+      const { data, error } = await supabase
+        .from('publicaciones')
+        .select('*')
+        .in('idusuario', seguidos)
+        .order('createdat', { ascending: false })
+        .range(from, Math.min(to, totalSeguidos - 1))
+      if (error) throw new Error(error.message)
+      filas = data || []
+    }
+
+    const faltan = cantidad - filas.length
+    if (faltan > 0) {
+      const desde = Math.max(0, from - totalSeguidos)
+      const { data, error } = await supabase
+        .from('publicaciones')
+        .select('*')
+        .not('idusuario', 'in', noSeguidos)
+        .order('createdat', { ascending: false })
+        .range(desde, desde + faltan - 1)
+      if (error) throw new Error(error.message)
+      filas = filas.concat(data || [])
+    }
+
+    return { data: filas, count: totalSeguidos + totalResto }
+  }
+
   // ── Queries públicas ──────────────────────────────────────────────────────
 
   /**
@@ -145,19 +194,37 @@ class PublicacionesRepository {
     const from = (page - 1) * limit
     const to   = from + limit - 1
 
-    let query = supabase
-      .from('publicaciones')
-      .select('*', { count: 'exact' })
-
-    if (targetUserId) {
-      query = query.eq('idusuario', targetUserId)
+    // Feed general (sin filtrar por autor): las cuentas que sigo van primero
+    let seguidos = []
+    if (!targetUserId && idusuario) {
+      try {
+        seguidos = await SeguidoresRepository.getSeguidosIdsAsync(idusuario)
+      } catch (err) {
+        // Si la tabla seguidores aún no existe, el feed sigue funcionando en orden cronológico
+        console.warn('[publicaciones] No se pudieron leer los seguidos:', err.message)
+      }
     }
 
-    const { data, count, error } = await query
-      .order('createdat', { ascending: false })
-      .range(from, to)
+    let data, count
+    if (seguidos.length > 0) {
+      ({ data, count } = await this.#getPaginaSeguidosPrimero(seguidos, from, to))
+    } else {
+      let query = supabase
+        .from('publicaciones')
+        .select('*', { count: 'exact' })
 
-    if (error) throw new Error(error.message)
+      if (targetUserId) {
+        query = query.eq('idusuario', targetUserId)
+      }
+
+      const res = await query
+        .order('createdat', { ascending: false })
+        .range(from, to)
+
+      if (res.error) throw new Error(res.error.message)
+      data = res.data
+      count = res.count
+    }
 
     const ids  = (data || []).map(p => p.idpublicacion)
     const meta = await this.#fetchMeta(ids, idusuario)
