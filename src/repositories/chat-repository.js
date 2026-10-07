@@ -313,7 +313,7 @@ class ChatRepository {
   /**
    * Inserta un nuevo mensaje
    */
-  async insertarMensaje(idconversacion, idusuarioemisor, contenido, tipomensaje = 'TEXTO') {
+  async insertarMensaje(idconversacion, idusuarioemisor, contenido, tipomensaje = 'TEXTO', referencias = {}) {
     const ahoraUtc = new Date().toISOString()
     const { data, error } = await supabase
       .from('mensajes')
@@ -322,6 +322,7 @@ class ChatRepository {
         idusuarioemisor,
         contenido,
         tipomensaje,
+        ...referencias, // { idprueba, identrenamiento, idempleo } en mensajes de tipo EVENTO
         createdat: ahoraUtc
       })
       .select()

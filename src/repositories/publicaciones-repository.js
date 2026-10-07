@@ -3,46 +3,25 @@ import { resolverAutor } from '../utils/resolver-autor.js'
 import LikesRepository from './likes-publicacion-repository.js'
 import ComentariosRepository from './comentarios-publicacion-repository.js'
 import SeguidoresRepository from './seguidores-repository.js'
+import AdjuntosRepository from './adjuntos-repository.js'
 
 class PublicacionesRepository {
 
   // ── Helpers privados ─────────────────────────────────────────────────────
 
   /**
-   * Resuelve la entidad referenciada (Prueba, Entrenamiento, Empleo)
-   * para publicaciones que no son de tipo NORMAL.
+   * Resuelve el evento adjunto (Prueba, Entrenamiento, Empleo) en el formato normalizado de adjuntos.
    */
   async #resolverReferencia(pub) {
-    if (pub.tipopublicacion === 'NORMAL') return null
-
-    if (pub.tipopublicacion === 'PRUEBA' && pub.idprueba) {
-      const { data } = await supabase
-        .from('pruebas')
-        .select('categoria, zona, fechaprueba')
-        .eq('idprueba', pub.idprueba)
-        .single()
-      return data || null
+    const ids = { PRUEBA: pub.idprueba, ENTRENAMIENTO: pub.identrenamiento, EMPLEO: pub.idempleo }
+    const id = ids[pub.tipopublicacion]
+    if (!id) return null
+    try {
+      const { idusuarioDuenio, ...evento } = (await AdjuntosRepository.getAsync(pub.tipopublicacion, id)) || {}
+      return evento.id ? evento : null
+    } catch {
+      return null
     }
-
-    if (pub.tipopublicacion === 'ENTRENAMIENTO' && pub.identrenamiento) {
-      const { data } = await supabase
-        .from('entrenamientos')
-        .select('identrenamientos, titulo, ubicacion, fechaentr, precio, nivel, genero')
-        .eq('identrenamientos', pub.identrenamiento)
-        .single()
-      return data || null
-    }
-
-    if (pub.tipopublicacion === 'EMPLEO' && pub.idempleo) {
-      const { data } = await supabase
-        .from('empleo')
-        .select('idempleo, nombre, horasreq, habilidadesreq, acercaempleo, fechapublicacion')
-        .eq('idempleo', pub.idempleo)
-        .single()
-      return data || null
-    }
-
-    return null
   }
 
   /**
@@ -101,35 +80,6 @@ class PublicacionesRepository {
       likedByUser:      likesData.likedByUser,
       comentariosCount
     }
-  }
-
-  // ── Owner checks (para validación en services) ────────────────────────────
-
-  async getPruebaOwnerAsync(idprueba) {
-    const { data } = await supabase
-      .from('pruebas')
-      .select('clubes(idusuario)')
-      .eq('idprueba', idprueba)
-      .single()
-    return data
-  }
-
-  async getEntrenamientoOwnerAsync(identrenamiento) {
-    const { data } = await supabase
-      .from('entrenamientos')
-      .select('entrenadores(idusuario)')
-      .eq('identrenamientos', identrenamiento)
-      .single()
-    return data
-  }
-
-  async getEmpleoOwnerAsync(idempleo) {
-    const { data } = await supabase
-      .from('empleo')
-      .select('clubes(idusuario)')
-      .eq('idempleo', idempleo)
-      .single()
-    return data
   }
 
   /**

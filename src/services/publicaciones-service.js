@@ -1,4 +1,5 @@
 import PublicacionesRepository from '../repositories/publicaciones-repository.js'
+import adjuntosService from './adjuntos-service.js'
 
 class PublicacionesService {
 
@@ -20,9 +21,9 @@ class PublicacionesService {
     return publicacion
   }
 
-  async crearPublicacion(data, archivo, idusuario) {
+  async crearPublicacion(data, archivo, idusuario, tipousuario) {
     const {
-      contenido,
+      contenido = '',
       tipopublicacion = 'NORMAL',
       idprueba,
       identrenamiento,
@@ -30,51 +31,31 @@ class PublicacionesService {
       imagen
     } = data
 
-    if (!contenido || contenido.trim() === '') {
-      throw { status: 400, message: 'El contenido es obligatorio' }
-    }
-
     if (!['NORMAL', 'PRUEBA', 'ENTRENAMIENTO', 'EMPLEO'].includes(tipopublicacion)) {
       throw { status: 400, message: 'Tipo de publicación inválido' }
     }
 
+    // Con un evento adjunto el texto es opcional
+    if (tipopublicacion === 'NORMAL' && contenido.trim() === '') {
+      throw { status: 400, message: 'El contenido es obligatorio' }
+    }
+
+    const referencias = { PRUEBA: idprueba, ENTRENAMIENTO: identrenamiento, EMPLEO: idempleo }
+    const idsPresentes = Object.entries(referencias).filter(([, v]) => v)
+
     if (tipopublicacion === 'NORMAL') {
-      if (idprueba || identrenamiento || idempleo) {
+      if (idsPresentes.length > 0) {
         throw { status: 400, message: 'Una publicación NORMAL no puede tener referencias' }
       }
-    }
-
-    if (tipopublicacion === 'PRUEBA') {
-      if (!idprueba) throw { status: 400, message: 'Se requiere idprueba para el tipo PRUEBA' }
-      if (identrenamiento || idempleo) throw { status: 400, message: 'No se permiten referencias incompatibles para PRUEBA' }
-
-      const owner = await PublicacionesRepository.getPruebaOwnerAsync(idprueba)
-      if (!owner) throw { status: 404, message: 'La prueba no existe' }
-      if (Number(owner.clubes?.idusuario) !== Number(idusuario)) {
-        throw { status: 403, message: 'No tienes permiso para publicar esta prueba' }
+    } else {
+      if (!referencias[tipopublicacion]) {
+        throw { status: 400, message: `Falta el evento a adjuntar para el tipo ${tipopublicacion}` }
       }
-    }
-
-    if (tipopublicacion === 'ENTRENAMIENTO') {
-      if (!identrenamiento) throw { status: 400, message: 'Se requiere identrenamiento para el tipo ENTRENAMIENTO' }
-      if (idprueba || idempleo) throw { status: 400, message: 'No se permiten referencias incompatibles para ENTRENAMIENTO' }
-
-      const owner = await PublicacionesRepository.getEntrenamientoOwnerAsync(identrenamiento)
-      if (!owner) throw { status: 404, message: 'El entrenamiento no existe' }
-      if (Number(owner.entrenadores?.idusuario) !== Number(idusuario)) {
-        throw { status: 403, message: 'No tienes permiso para publicar este entrenamiento' }
+      if (idsPresentes.length > 1) {
+        throw { status: 400, message: `No se permiten referencias incompatibles para ${tipopublicacion}` }
       }
-    }
-
-    if (tipopublicacion === 'EMPLEO') {
-      if (!idempleo) throw { status: 400, message: 'Se requiere idempleo para el tipo EMPLEO' }
-      if (idprueba || identrenamiento) throw { status: 400, message: 'No se permiten referencias incompatibles para EMPLEO' }
-
-      const owner = await PublicacionesRepository.getEmpleoOwnerAsync(idempleo)
-      if (!owner) throw { status: 404, message: 'El empleo no existe' }
-      if (Number(owner.clubes?.idusuario) !== Number(idusuario)) {
-        throw { status: 403, message: 'No tienes permiso para publicar este empleo' }
-      }
+      // Club → sus pruebas y empleos; entrenador → sus entrenamientos
+      await adjuntosService.validarPropio(tipopublicacion, referencias[tipopublicacion], idusuario, tipousuario)
     }
 
     let imagenUrl = imagen || null
@@ -84,7 +65,7 @@ class PublicacionesService {
 
     const nuevaPublicacion = {
       idusuario,
-      contenido,
+      contenido:       contenido.trim(),
       tipopublicacion,
       idprueba:        tipopublicacion === 'PRUEBA'         ? Number(idprueba)        : null,
       identrenamiento: tipopublicacion === 'ENTRENAMIENTO'  ? Number(identrenamiento) : null,

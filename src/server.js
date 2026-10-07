@@ -28,6 +28,7 @@ import reseniaRoutes from './routes/resenia.routes.js'
 import notificacionesRoutes from './routes/notificaciones-routes.js'
 import seguidoresRoutes from './routes/seguidores-routes.js'
 import recomendacionesRoutes from './routes/recomendaciones-routes.js'
+import adjuntosRoutes from './routes/adjuntos-routes.js'
 import { iniciarRecordatorios } from './services/recordatorios-service.js'
 
 const app = express()
@@ -60,6 +61,7 @@ app.use('/api/resenias', reseniaRoutes)
 app.use('/api/notificaciones', notificacionesRoutes)
 app.use('/api/seguidores', seguidoresRoutes)
 app.use('/api/recomendaciones', recomendacionesRoutes)
+app.use('/api/adjuntos', adjuntosRoutes)
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`)
   iniciarRecordatorios()

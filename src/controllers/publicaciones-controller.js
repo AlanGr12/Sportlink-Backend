@@ -47,7 +47,8 @@ class PublicacionesController {
       const publicacion = await publicacionesService.crearPublicacion(
         req.body,
         req.file,
-        req.usuario.idusuario
+        req.usuario.idusuario,
+        req.usuario.tipousuario
       )
       res.status(StatusCodes.CREATED).json(publicacion)
     } catch (error) {

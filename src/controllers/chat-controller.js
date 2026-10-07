@@ -113,14 +113,17 @@ class ChatController {
     try {
       const idusuarioemisor = req.usuario.idusuario
       const { idconversacion } = req.params
-      const { contenido, tipomensaje } = req.body
+      const { contenido, tipomensaje, evento } = req.body
 
-      const mensaje = await chatService.enviarMensaje(Number(idconversacion), idusuarioemisor, contenido, tipomensaje)
+      const mensaje = await chatService.enviarMensaje(Number(idconversacion), idusuarioemisor, contenido, tipomensaje, {
+        evento,
+        tipousuario: req.usuario.tipousuario,
+      })
       res.status(StatusCodes.CREATED).json(mensaje)
     } catch (err) {
       console.error('[chat-controller] postMensaje error:', err)
       
-      let status = StatusCodes.INTERNAL_SERVER_ERROR
+      let status = err.status || StatusCodes.INTERNAL_SERVER_ERROR
       if (err.message.includes('Acceso denegado')) status = StatusCodes.FORBIDDEN
       if (err.message.includes('vacío')) status = StatusCodes.BAD_REQUEST
 

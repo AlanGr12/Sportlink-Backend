@@ -1,4 +1,5 @@
 import chatRepository from '../repositories/chat-repository.js'
+import adjuntosService from './adjuntos-service.js'
 
 class ChatService {
   /**
@@ -103,9 +104,16 @@ class ChatService {
 
   /**
    * Envía un mensaje a una conversación, validando pertenencia y contenido.
+   * Con tipomensaje 'EVENTO' adjunta un evento propio: opciones.evento = { tipo, id }
+   * (club → PRUEBA o EMPLEO; entrenador → ENTRENAMIENTO).
    * Actualiza el updatedat de la conversación al finalizar.
    */
-  async enviarMensaje(idconversacion, idusuarioemisor, contenido, tipomensaje = 'TEXTO') {
+  async enviarMensaje(idconversacion, idusuarioemisor, contenido, tipomensaje = 'TEXTO', opciones = {}) {
+    tipomensaje = tipomensaje || 'TEXTO'
+    if (!['TEXTO', 'EVENTO'].includes(tipomensaje)) {
+      throw { status: 400, message: 'Tipo de mensaje inválido.' }
+    }
+
     // 1. Validar que contenido no esté vacío si es de texto
     if (tipomensaje === 'TEXTO' && (!contenido || contenido.trim() === '')) {
       throw new Error('El contenido del mensaje no puede estar vacío.')
@@ -117,10 +125,24 @@ class ChatService {
       throw new Error('Acceso denegado. No perteneces a esta conversación.')
     }
 
-    // 3. Insertar el mensaje
-    const mensajeCreado = await chatRepository.insertarMensaje(idconversacion, idusuarioemisor, contenido, tipomensaje)
+    // 3. Si adjunta un evento, validar que sea suyo y armar las referencias
+    let referencias = {}
+    if (tipomensaje === 'EVENTO') {
+      const { tipo, id } = opciones.evento || {}
+      const evento = await adjuntosService.validarPropio(tipo, id, idusuarioemisor, opciones.tipousuario)
+      referencias = {
+        idprueba:        evento.tipo === 'PRUEBA'        ? evento.id : null,
+        identrenamiento: evento.tipo === 'ENTRENAMIENTO' ? evento.id : null,
+        idempleo:        evento.tipo === 'EMPLEO'        ? evento.id : null,
+      }
+      // El texto que acompaña al evento es opcional
+      contenido = contenido?.trim() || ''
+    }
 
-    // 4. Actualizar el updatedat de la conversación (no importa si falla o no es 100% atómico con el insert del msg para propósitos de chat, pero actualiza el orden)
+    // 4. Insertar el mensaje
+    const mensajeCreado = await chatRepository.insertarMensaje(idconversacion, idusuarioemisor, contenido, tipomensaje, referencias)
+
+    // 5. Actualizar el updatedat de la conversación (no importa si falla o no es 100% atómico con el insert del msg para propósitos de chat, pero actualiza el orden)
     try {
       await chatRepository.actualizarUpdatedAtConversacion(idconversacion)
     } catch (err) {
