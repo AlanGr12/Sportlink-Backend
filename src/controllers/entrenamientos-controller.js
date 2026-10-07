@@ -4,6 +4,7 @@ import EntrenamientosService from '../services/entrenamientos-service.js'
 import EntrenamientoXJugador from '../services/entrenamientoxjugador.js'
 import { verificarToken, requiereRol } from '../middlewares/auth-middleware.js'
 import ListaEsperaService from '../services/lista-espera-service.js'
+import moderacionService from '../services/moderacion-service.js'
 import multer from 'multer'
 
 const router = Router()
@@ -148,6 +149,16 @@ router.put('/:id', verificarToken, requiereRol('entrenador'), upload.single('ima
 
     const ent = await service.editarEntrenamiento(idEntrenamiento, payload, req.file, req.usuario.idusuario)
     res.status(StatusCodes.OK).json(ent)
+  } catch (error) {
+    res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
+  }
+})
+
+// DELETE /api/entrenamientos/:id — dueño del recurso o administrador
+router.delete('/:id', verificarToken, async (req, res) => {
+  try {
+    await moderacionService.eliminarEntrenamiento(req.params.id, req.usuario)
+    res.status(StatusCodes.NO_CONTENT).send()
   } catch (error) {
     res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
   }

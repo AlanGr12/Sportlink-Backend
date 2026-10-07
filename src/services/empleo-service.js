@@ -91,6 +91,47 @@ class EmpleoService {
 
     return empleo
   }
+
+  async #verificarDuenio(id, usuario) {
+    const duenio = await this.repository.getIdUsuarioDuenioAsync(id)
+    if (duenio === undefined) throw { status: 404, message: 'Empleo no encontrado' }
+    if (usuario?.es_admin !== true && Number(duenio) !== Number(usuario?.idusuario)) {
+      throw { status: 403, message: 'No tienes permiso para modificar esta vacante' }
+    }
+  }
+
+  async actualizarEmpleo(id, data, usuario) {
+    await this.#verificarDuenio(id, usuario)
+    const { iddeporte, nombre, horasreq, habilidadesreq, acercaempleo, estado } = data || {}
+    const campos = {}
+
+    if (nombre !== undefined) {
+      if (!String(nombre).trim()) throw { status: 400, message: 'El nombre de la vacante es obligatorio' }
+      campos.nombre = String(nombre).trim()
+    }
+    if (iddeporte !== undefined) {
+      if (!Number(iddeporte)) throw { status: 400, message: 'El deporte es obligatorio' }
+      campos.iddeporte = Number(iddeporte)
+    }
+    if (horasreq !== undefined) campos.horasreq = horasreq === '' ? null : horasreq
+    if (habilidadesreq !== undefined) campos.habilidadesreq = habilidadesreq || null
+    if (acercaempleo !== undefined) campos.acercaempleo = acercaempleo || null
+    if (estado !== undefined) {
+      const s = String(estado).toLowerCase()
+      if (s !== 'true' && s !== 'false') throw { status: 400, message: 'El estado debe ser true o false' }
+      campos.estado = s === 'true'
+    }
+    if (Object.keys(campos).length === 0) throw { status: 400, message: 'No hay campos para actualizar' }
+
+    if (campos.nombre !== undefined || campos.iddeporte !== undefined) {
+      const actual = await this.repository.getByIdAsync(id)
+      const existe = await this.repository.existeOtroEmpleo(
+        actual.idclub, campos.iddeporte ?? actual.iddeporte, campos.nombre ?? actual.nombre, id)
+      if (existe) throw { status: 400, message: 'Ya existe una vacante con ese nombre para ese club y deporte' }
+    }
+
+    return await this.repository.actualizarEmpleoAsync(id, campos)
+  }
 }
 
 export default EmpleoService

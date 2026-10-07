@@ -20,10 +20,10 @@ const upload = multer({
 })
 
 // GET /api/inscripcionesempleo
-router.get('/', async (req, res) => {
+router.get('/', verificarToken, async (req, res) => {
   try {
     const { idempleo } = req.query
-    const list = await service.getAllAsync(idempleo)
+    const list = await service.getAllAsync(idempleo, req.usuario)
     res.status(StatusCodes.OK).json(list)
   } catch (error) {
     res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
@@ -31,9 +31,9 @@ router.get('/', async (req, res) => {
 })
 
 // GET /api/inscripcionesempleo/:id
-router.get('/:id', async (req, res) => {
+router.get('/:id', verificarToken, async (req, res) => {
   try {
-    const ins = await service.getByIdAsync(req.params.id)
+    const ins = await service.getByIdAsync(req.params.id, req.usuario)
     res.status(StatusCodes.OK).json(ins)
   } catch (error) {
     res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
@@ -53,7 +53,17 @@ router.post('/postularse', verificarToken, requiereRol('entrenador'), upload.sin
 // PUT /api/inscripcionesempleo/:id/estado — Solo clubes pueden cambiar el estado de una postulación
 router.put('/:id/estado', verificarToken, requiereRol('club'), async (req, res) => {
   try {
-    const ins = await service.actualizarEstado(req.params.id, req.body.estado)
+    const ins = await service.actualizarEstado(req.params.id, req.body.estado, req.usuario)
+    res.status(StatusCodes.OK).json(ins)
+  } catch (error) {
+    res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
+  }
+})
+
+// PUT /api/inscripcionesempleo/:id/preseleccionar — el club marca/desmarca un candidato destacado
+router.put('/:id/preseleccionar', verificarToken, requiereRol('club'), async (req, res) => {
+  try {
+    const ins = await service.preseleccionar(req.params.id, req.body.preseleccionado, req.usuario)
     res.status(StatusCodes.OK).json(ins)
   } catch (error) {
     res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
@@ -63,7 +73,7 @@ router.put('/:id/estado', verificarToken, requiereRol('club'), async (req, res) 
 // PUT /api/inscripcionesempleo/:id/contratar — Solo clubes pueden marcar como contratado
 router.put('/:id/contratar', verificarToken, requiereRol('club'), async (req, res) => {
   try {
-    const ins = await service.marcarContratado(req.params.id)
+    const ins = await service.marcarContratado(req.params.id, req.usuario)
     res.status(StatusCodes.OK).json(ins)
   } catch (error) {
     res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })

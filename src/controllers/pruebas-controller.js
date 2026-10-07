@@ -4,6 +4,7 @@ import PruebasService from '../services/pruebas-service.js'
 import PruebaXJugador from '../services/pruebaxjugador.js'
 import { verificarToken, requiereRol } from '../middlewares/auth-middleware.js'
 import ListaEsperaService from '../services/lista-espera-service.js'
+import moderacionService from '../services/moderacion-service.js'
 import multer from 'multer'
 
 const router = Router()
@@ -139,5 +140,15 @@ router.put('/:id', verificarToken, requiereRol('club'), upload.single('imagen'),
 
 // PUT /api/pruebas/actualizarPrueba/:id — Alias
 router.put('/actualizarPrueba/:id', verificarToken, requiereRol('club'), upload.single('imagen'), handlerActualizarPrueba)
+
+// DELETE /api/pruebas/:id — dueño del recurso o administrador
+router.delete('/:id', verificarToken, async (req, res) => {
+  try {
+    await moderacionService.eliminarPrueba(req.params.id, req.usuario)
+    res.status(StatusCodes.NO_CONTENT).send()
+  } catch (error) {
+    res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
+  }
+})
 
 export default router

@@ -10,7 +10,7 @@ import express from 'express'
 import cors from 'cors'
 import JugadoresController from './controllers/jugadores-controller.js'
 import EntrenadoresController from './controllers/entrenadores-controller.js'
-import UsuariosController from './controllers/usuarios-controller.js'
+import UsuariosController, { usuariosAdminRouter } from './controllers/usuarios-controller.js'
 import ClubesController from './controllers/clubes-controller.js'
 import PruebasController from './controllers/pruebas-controller.js'
 import EntrenamientosController from './controllers/entrenamientos-controller.js'
@@ -39,6 +39,7 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }))
 app.use('/api/jugadores', JugadoresController)
 app.use('/api/entrenadores', EntrenadoresController)
 app.use('/api/login', UsuariosController)
+app.use('/api/usuarios', usuariosAdminRouter)
 app.use('/api/clubes', ClubesController)
 app.use('/api/pruebas',PruebasController)
 app.use('/api/entrenamientos', EntrenamientosController)

@@ -270,6 +270,10 @@ class PublicacionesRepository {
   }
 
   async eliminarPublicacionAsync(id) {
+    // Limpia dependencias por si la BD no tiene ON DELETE CASCADE
+    await supabase.from('comentarios_publicacion').delete().eq('idpublicacion', id)
+    await supabase.from('likes_publicacion').delete().eq('idpublicacion', id)
+
     const { error } = await supabase
       .from('publicaciones')
       .delete()

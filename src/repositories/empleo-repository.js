@@ -65,6 +65,49 @@ class EmpleoRepository {
     return !!data
   }
 
+  /** idusuario del club dueño del empleo; undefined si el empleo no existe. */
+  async getIdUsuarioDuenioAsync(idempleo) {
+    const { data, error } = await supabase
+      .from('empleo')
+      .select('idempleo, clubes ( idusuario )')
+      .eq('idempleo', idempleo)
+      .maybeSingle()
+
+    if (error) throw new Error(error.message)
+    if (!data) return undefined
+    return data.clubes?.idusuario ?? null
+  }
+
+  async existeOtroEmpleo(idclub, iddeporte, nombre, idexcluir) {
+    const { data, error } = await supabase
+      .from('empleo')
+      .select('idempleo')
+      .eq('idclub', idclub)
+      .eq('iddeporte', iddeporte)
+      .eq('nombre', nombre)
+      .neq('idempleo', idexcluir)
+      .limit(1)
+
+    if (error) throw new Error(error.message)
+    return Array.isArray(data) && data.length > 0
+  }
+
+  async actualizarEmpleoAsync(id, campos) {
+    const { data, error } = await supabase
+      .from('empleo')
+      .update({ ...campos, updatedat: new Date().toISOString() })
+      .eq('idempleo', id)
+      .select(`
+        *,
+        clubes ( idclub, nombre, fotoperfil, ubicacion, direccion, latitud, longitud ),
+        deportes ( iddeporte, deporte )
+      `)
+      .single()
+
+    if (error) throw new Error(error.message)
+    return new Empleo(data)
+  }
+
   async crearEmpleo(idclub, iddeporte, nombre, horasreq, habilidadesreq,
                      acercaempleo, estado) {
 

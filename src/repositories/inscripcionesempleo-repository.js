@@ -23,7 +23,7 @@ class InscripcionesEmpleoRepository {
         ),
         empleo (
           *,
-          clubes ( idclub, nombre, fotoperfil, ubicacion, direccion, latitud, longitud ),
+          clubes ( idclub, idusuario, nombre, fotoperfil, ubicacion, direccion, latitud, longitud ),
           deportes ( iddeporte, deporte )
         )
       `)
@@ -61,7 +61,7 @@ class InscripcionesEmpleoRepository {
         ),
         empleo (
           *,
-          clubes ( idclub, nombre, fotoperfil, ubicacion, direccion, latitud, longitud ),
+          clubes ( idclub, idusuario, nombre, fotoperfil, ubicacion, direccion, latitud, longitud ),
           deportes ( iddeporte, deporte )
         )
       `)
@@ -116,6 +116,19 @@ class InscripcionesEmpleoRepository {
     const { data, error } = await supabase
       .from('inscripcionesempleo')
       .update({ estado })
+      .eq('idinsripcion', id)
+      .select()
+      .single()
+
+    if (error) throw new Error(error.message)
+
+    return new InscripcionEmpleo(data)
+  }
+
+  async actualizarPreseleccion(id, preseleccionado) {
+    const { data, error } = await supabase
+      .from('inscripcionesempleo')
+      .update({ preseleccionado })
       .eq('idinsripcion', id)
       .select()
       .single()

@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { StatusCodes } from 'http-status-codes'
 import EmpleoService from '../services/empleo-service.js'
+import moderacionService from '../services/moderacion-service.js'
 import { verificarToken, requiereRol } from '../middlewares/auth-middleware.js'
 
 const router = Router()
@@ -41,6 +42,26 @@ router.get('/:id', async (req, res) => {
   try {
     const empleo = await service.getByIdAsync(req.params.id)
     res.status(StatusCodes.OK).json(empleo)
+  } catch (error) {
+    res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
+  }
+})
+
+// PUT /api/empleo/:id — el club dueño (o admin) modifica la vacante
+router.put('/:id', verificarToken, async (req, res) => {
+  try {
+    const empleo = await service.actualizarEmpleo(req.params.id, req.body, req.usuario)
+    res.status(StatusCodes.OK).json(empleo)
+  } catch (error) {
+    res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
+  }
+})
+
+// DELETE /api/empleo/:id — el club dueño (o admin) elimina la vacante y sus postulaciones
+router.delete('/:id', verificarToken, async (req, res) => {
+  try {
+    await moderacionService.eliminarEmpleo(req.params.id, req.usuario)
+    res.status(StatusCodes.NO_CONTENT).send()
   } catch (error) {
     res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
   }

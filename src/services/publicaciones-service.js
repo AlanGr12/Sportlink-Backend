@@ -125,11 +125,11 @@ class PublicacionesService {
     return await PublicacionesRepository.actualizarPublicacionAsync(id, contenido, imagenUrl, idusuario)
   }
 
-  async eliminarPublicacion(id, idusuario) {
+  async eliminarPublicacion(id, idusuario, esAdmin = false) {
     const pub = await PublicacionesRepository.getRawByIdAsync(id)
     if (!pub) throw { status: 404, message: 'Publicación no encontrada' }
 
-    if (Number(pub.idusuario) !== Number(idusuario)) {
+    if (!esAdmin && Number(pub.idusuario) !== Number(idusuario)) {
       throw { status: 403, message: 'No tienes permiso para eliminar esta publicación' }
     }
 

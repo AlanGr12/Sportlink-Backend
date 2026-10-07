@@ -73,7 +73,7 @@ class PublicacionesController {
 
   async deletePublicacion(req, res) {
     try {
-      await publicacionesService.eliminarPublicacion(req.params.id, req.usuario.idusuario)
+      await publicacionesService.eliminarPublicacion(req.params.id, req.usuario.idusuario, req.usuario.es_admin === true)
       res.status(StatusCodes.NO_CONTENT).send()
     } catch (error) {
       res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })

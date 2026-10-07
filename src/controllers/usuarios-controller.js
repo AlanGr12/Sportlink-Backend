@@ -1,7 +1,8 @@
 import { Router } from 'express'
 import { StatusCodes } from 'http-status-codes'
 import UsuariosService from '../services/usuarios-service.js'
-import { verificarToken } from '../middlewares/auth-middleware.js'
+import { verificarToken, esAdmin } from '../middlewares/auth-middleware.js'
+import moderacionService from '../services/moderacion-service.js'
 import multer from 'multer'
 
 const router = Router()
@@ -111,6 +112,18 @@ router.put('/perfil/:idusuario', verificarToken, async (req, res) => {
     })
   } catch (error) {
     console.error('[ACTUALIZAR PERFIL ERROR]', error)
+    res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
+  }
+})
+
+// DELETE /api/usuarios/:id — solo administradores (montado en /api/usuarios en server.js)
+export const usuariosAdminRouter = Router()
+usuariosAdminRouter.delete('/:id', verificarToken, esAdmin, async (req, res) => {
+  try {
+    await moderacionService.eliminarUsuario(req.params.id, req.usuario)
+    res.status(StatusCodes.NO_CONTENT).send()
+  } catch (error) {
+    console.error('[ELIMINAR USUARIO ERROR]', error)
     res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
   }
 })

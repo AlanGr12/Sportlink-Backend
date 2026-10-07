@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken'
 import { StatusCodes } from 'http-status-codes'
+import supabase from '../configs/supabase-config.js'
 
 const JWT_SECRET = process.env.JWT_SECRET
 
@@ -18,7 +19,7 @@ if (!JWT_SECRET) {
  *   401 - Sin token o header malformado
  *   403 - Token inválido o expirado
  */
-export function verificarToken(req, res, next) {
+export async function verificarToken(req, res, next) {
   const authHeader = req.headers['authorization']
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -33,7 +34,6 @@ export function verificarToken(req, res, next) {
   try {
     const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] })
     req.usuario = decoded // { idusuario, tipousuario, iat, exp }
-    next()
   } catch (err) {
     const esExpirado = err.name === 'TokenExpiredError'
     return res.status(StatusCodes.FORBIDDEN).json({
@@ -41,6 +41,22 @@ export function verificarToken(req, res, next) {
       detail: err.message,
     })
   }
+
+  // es_admin se lee siempre de la BD (no del JWT) para que otorgar/revocar el rol sea inmediato.
+  try {
+    const { data, error } = await supabase
+      .from('usuarios')
+      .select('es_admin')
+      .eq('idusuario', req.usuario.idusuario)
+      .maybeSingle()
+    if (error) throw new Error(error.message)
+    req.usuario.es_admin = data?.es_admin === true
+  } catch (err) {
+    console.error('[auth-middleware] No se pudo leer es_admin:', err.message)
+    req.usuario.es_admin = false
+  }
+
+  next()
 }
 
 /**
@@ -64,4 +80,18 @@ export function requiereRol(...rolesPermitidos) {
 
     next()
   }
+}
+
+/**
+ * Middleware: esAdmin
+ *
+ * Permite el paso solo a usuarios con es_admin = true. Debe usarse DESPUÉS de verificarToken.
+ */
+export function esAdmin(req, res, next) {
+  if (req.usuario && (req.usuario.es_admin === true || req.usuario.tipousuario === 'ADMIN')) {
+    return next()
+  }
+  return res.status(StatusCodes.FORBIDDEN).json({
+    error: 'Acceso denegado. Se requieren permisos de administrador.',
+  })
 }
