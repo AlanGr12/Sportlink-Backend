@@ -73,6 +73,7 @@ class UsuariosService {
       nombre:      perfilExtra?.nombre     || null,
       biografia:   usuario.biografia       || null,
       es_admin:    usuario.es_admin === true,
+      estado:      perfilExtra?.estado     || null,
     }
 
     return { token, perfil }

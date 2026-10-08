@@ -135,11 +135,12 @@ class UsuariosRepository {
     else if (tipousuario === 'club') tabla = 'clubes'
     else return null
 
+    const campos = tipousuario === 'club' ? 'fotoperfil, nombre, estado' : 'fotoperfil, nombre'
     const { data, error } = await supabase
       .from(tabla)
-      .select('fotoperfil, nombre')
+      .select(campos)
       .eq('idusuario', idusuario)
-      .single()
+      .maybeSingle()
 
     if (error) return null
     return data
