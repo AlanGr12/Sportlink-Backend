@@ -14,17 +14,24 @@ const urlStorage = (bucket, imagen) => {
 
 const unir = (...partes) => partes.filter(Boolean).join(' · ')
 
-const normalizarPrueba = (p) => ({
-  tipo: 'PRUEBA',
-  id: p.idprueba,
-  titulo: unir(`Prueba de ${p.deportes?.deporte || 'deporte'}`, p.categoria),
-  subtitulo: unir(p.clubes?.nombre, p.zona),
-  imagen: urlStorage('fotoPruebas', p.imagen),
-  fecha: p.fechaprueba,
-  ruta: `/pruebas/${p.idprueba}`,
-  activo: p.estado !== false,
-  idusuarioDuenio: p.clubes?.idusuario ?? null,
-})
+const normalizarPrueba = (p) => {
+  const club = p.clubes?.nombre
+  let zona = p.zona || ''
+  if (club && zona.toLowerCase().startsWith(club.toLowerCase())) {
+    zona = zona.slice(club.length).replace(/^[\s,·-]+/, '')
+  }
+  return {
+    tipo: 'PRUEBA',
+    id: p.idprueba,
+    titulo: unir(`Prueba de ${p.deportes?.deporte || 'deporte'}`, p.categoria),
+    subtitulo: unir(club, zona),
+    imagen: urlStorage('fotoPruebas', p.imagen),
+    fecha: p.fechaprueba,
+    ruta: `/pruebas/${p.idprueba}`,
+    activo: p.estado !== false,
+    idusuarioDuenio: p.clubes?.idusuario ?? null,
+  }
+}
 
 const normalizarEntrenamiento = (e) => ({
   tipo: 'ENTRENAMIENTO',
