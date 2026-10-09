@@ -68,7 +68,7 @@ const handlerCrearPrueba = async (req, res) => {
     const prueba = await service.crearPrueba(payload, req.file, req.usuario.idusuario)
     res.status(StatusCodes.OK).json(prueba)
   } catch (error) {
-    res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
+    res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message, codigo: error.codigo })
   }
 }
 

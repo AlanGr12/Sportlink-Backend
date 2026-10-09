@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { StatusCodes } from 'http-status-codes'
 import ClubesService from '../services/clubes-service.js'
 import multer from 'multer'
+import { autenticacionOpcional } from '../middlewares/auth-middleware.js'
 
 const router = Router()
 const service = new ClubesService()
@@ -28,9 +29,9 @@ router.get('/', async (req, res) => {
 })
 
 // GET /api/clubes/perfil/:id
-router.get('/perfil/:id', async (req, res) => {
+router.get('/perfil/:id', autenticacionOpcional, async (req, res) => {
   try {
-    const club = await service.obtenerPerfilAsync(req.params.id)
+    const club = await service.obtenerPerfilAsync(req.params.id, req.usuario)
     res.status(StatusCodes.OK).json(club)
   } catch (error) {
     res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
@@ -38,9 +39,9 @@ router.get('/perfil/:id', async (req, res) => {
 })
 
 // GET /api/clubes/:id
-router.get('/:id', async (req, res) => {
+router.get('/:id', autenticacionOpcional, async (req, res) => {
   try {
-    const club = await service.getByIdAsync(req.params.id)
+    const club = await service.getByIdAsync(req.params.id, req.usuario)
     res.status(StatusCodes.OK).json(club)
   } catch (error) {
     res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })

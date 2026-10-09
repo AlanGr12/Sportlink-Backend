@@ -50,6 +50,28 @@ class UsuariosService {
 
     if (!autenticado) throw { status: 401, message: 'Credenciales inválidas' }
 
+    // ── Moderación de clubes: solo los APROBADOS obtienen sesión ──────────────
+    // Se valida después de la contraseña para no revelar el estado a quien no la conoce.
+    const perfilExtra = await this.repository.getPerfilByUsuarioAsync(usuario.idusuario, usuario.tipousuario)
+
+    if (String(usuario.tipousuario).toLowerCase() === 'club') {
+      const estadoClub = String(perfilExtra?.estado || 'PENDIENTE').toUpperCase()
+      if (estadoClub === 'PENDIENTE') {
+        throw {
+          status: 403,
+          codigo: 'CLUB_PENDIENTE',
+          message: 'Tu cuenta de club está siendo revisada por el equipo de administración para ser aprobada.'
+        }
+      }
+      if (estadoClub === 'RECHAZADO') {
+        throw {
+          status: 403,
+          codigo: 'CLUB_RECHAZADO',
+          message: 'La solicitud de tu club no fue admitida por el equipo de administración. Si creés que se trata de un error, contactá a soporte.'
+        }
+      }
+    }
+
     // ── Generar JWT ───────────────────────────────────────────────────────────
     // NUNCA incluir la contraseña (ni hasheada) en el payload del token.
     const payload = {
@@ -63,8 +85,6 @@ class UsuariosService {
     })
 
     // ── Perfil público (sin contraseña) ───────────────────────────────────────
-    const perfilExtra = await this.repository.getPerfilByUsuarioAsync(usuario.idusuario, usuario.tipousuario)
-
     const perfil = {
       idusuario:   usuario.idusuario,
       email:       usuario.email,
@@ -79,11 +99,20 @@ class UsuariosService {
     return { token, perfil }
   }
 
-  async getPerfilCompletoAsync(idusuario) {
+  async getPerfilCompletoAsync(idusuario, solicitante) {
     const usuario = await this.repository.getByIdAsync(idusuario)
     if (!usuario) throw { status: 404, message: 'No se encontró el usuario' }
 
     const perfil = await this.repository.getPerfilCompletoByUsuarioAsync(idusuario, usuario.tipousuario)
+
+    // Perfiles de clubes no aprobados: solo visibles para administradores y para el propio club
+    if (solicitante && String(usuario.tipousuario).toLowerCase() === 'club'
+        && String(perfil?.estado || 'PENDIENTE').toUpperCase() !== 'APROBADO') {
+      const esPropio = Number(solicitante.idusuario) === Number(idusuario)
+      if (!esPropio && solicitante.es_admin !== true) {
+        throw { status: 404, message: 'Este perfil no está disponible o se encuentra en proceso de validación.' }
+      }
+    }
 
     // Nunca exponer la contraseña en el perfil completo
     const { contraseña, ...usuarioSinPassword } = usuario

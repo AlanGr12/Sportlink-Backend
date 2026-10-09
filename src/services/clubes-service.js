@@ -11,20 +11,28 @@ class ClubesService {
     return await this.repository.getAllAsync()
   }
 
-  async getByIdAsync(id) {
-    const club = await this.repository.getByIdAsync(id)
+  // Un club no aprobado solo es visible para administradores y para su propio dueño.
+  // Para el resto responde 404, igual que si no existiera.
+  verificarVisibilidad(club, id, solicitante) {
     if (!club) throw { status: 404, message: `No se encontró el club con id ${id}` }
-    return club
+    if (club.estado === 'APROBADO') return club
+    const esDueño = solicitante?.idusuario != null && Number(solicitante.idusuario) === Number(club.idusuario)
+    if (solicitante?.es_admin === true || esDueño) return club
+    throw { status: 404, message: 'Este perfil no está disponible o se encuentra en proceso de validación.' }
+  }
+
+  async getByIdAsync(id, solicitante) {
+    const club = await this.repository.getByIdAsync(id).catch(() => null)
+    return this.verificarVisibilidad(club, id, solicitante)
   }
 
   async getClubByIdAsync(id) {
     return await this.getByIdAsync(id)
   }
 
-  async obtenerPerfilAsync(id) {
+  async obtenerPerfilAsync(id, solicitante) {
     const club = await this.repository.obtenerPerfilAsync(id)
-    if (!club) throw { status: 404, message: `No se encontró el club con id ${id}` }
-    return club
+    return this.verificarVisibilidad(club, id, solicitante)
   }
 
   async registrarClubAsync(data, archivo) {

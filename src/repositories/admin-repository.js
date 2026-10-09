@@ -194,6 +194,54 @@ class AdminRepository {
   }
 
   /**
+   * Ficha completa de auditoría de un club: cuenta (usuarios), deportes
+   * (clubesxdeportes → deportes) e imágenes de instalaciones (imagenesclub).
+   */
+  async getClubDetalleAsync(idclub) {
+    const { data: club, error } = await supabase
+      .from('clubes')
+      .select(`
+        *,
+        usuarios ( idusuario, email, createdat ),
+        clubesxdeportes ( deportes ( iddeporte, deporte ) )
+      `)
+      .eq('idclub', idclub)
+      .maybeSingle()
+
+    if (error) throw new Error(error.message)
+    if (!club) return null
+
+    // Se usa select('*') porque el nombre de la columna con la URL puede variar
+    const { data: imgs, error: errImgs } = await supabase
+      .from('imagenesclub')
+      .select('*')
+      .eq('idclub', idclub)
+
+    if (errImgs) console.error('[admin-repo] imagenesclub:', errImgs.message)
+
+    const imagenes = (imgs || [])
+      .map(i => i.url || i.imagen || i.urlimagen || i.url_imagen || i.foto || i.ruta || null)
+      .filter(Boolean)
+
+    return {
+      idclub: club.idclub,
+      idusuario: club.idusuario,
+      nombre: club.nombre,
+      ubicacion: club.ubicacion,
+      direccion: club.direccion,
+      latitud: club.latitud,
+      longitud: club.longitud,
+      fotoperfil: club.fotoperfil,
+      descripcion: club.descripcion,
+      estado: club.estado || 'PENDIENTE',
+      email: club.usuarios?.email || null,
+      createdat: club.usuarios?.createdat || null,
+      deportes: (club.clubesxdeportes || []).map(d => d.deportes?.deporte).filter(Boolean),
+      imagenes
+    }
+  }
+
+  /**
    * Actualiza el estado de aprobación de un club
    */
   async actualizarEstadoClubAsync(idclub, nuevoEstado) {

@@ -16,6 +16,7 @@ class ClubesRepository {
     const { data, error } = await supabase
       .from('clubes')
       .select(SELECT_CLUB_QUERY)
+      .eq('estado', 'APROBADO') // directorio público: solo clubes moderados y aprobados
 
     if (error) throw new Error(error.message)
 
@@ -39,6 +40,22 @@ class ClubesRepository {
       ...data,
       deportes: data.clubesxdeportes ? data.clubesxdeportes.map(cxd => cxd.deportes) : []
     })
+  }
+
+  /**
+   * Estado de moderación del club ('PENDIENTE' | 'APROBADO' | 'RECHAZADO').
+   * Un estado nulo se considera PENDIENTE. Devuelve null si el club no existe.
+   */
+  async getEstadoAsync(idclub) {
+    const { data, error } = await supabase
+      .from('clubes')
+      .select('estado')
+      .eq('idclub', idclub)
+      .maybeSingle()
+
+    if (error) throw new Error(error.message)
+    if (!data) return null
+    return String(data.estado || 'PENDIENTE').toUpperCase()
   }
 
   async getClubByIdAsync(id) {

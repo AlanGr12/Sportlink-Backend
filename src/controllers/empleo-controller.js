@@ -33,7 +33,7 @@ router.post('/crearEmpleo', verificarToken, requiereRol('club'), async (req, res
     const empleo = await service.crearEmpleo(req.body, req.usuario.idusuario)
     res.status(StatusCodes.OK).json(empleo)
   } catch (error) {
-    res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
+    res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message, codigo: error.codigo })
   }
 })
 

@@ -28,7 +28,12 @@ router.post('/', async (req, res) => {
     res.status(StatusCodes.OK).json(resultado)
   } catch (error) {
     console.error('[LOGIN ERROR]', error)
-    res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
+    res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      ...(error.codigo && { codigo: error.codigo }),
+      mensaje: error.message,
+      error: error.message
+    })
   }
 })
 
@@ -84,7 +89,7 @@ router.put('/perfil/foto', verificarToken, (req, res) => {
 router.get('/perfil/:idusuario', verificarToken, async (req, res) => {
   const { idusuario } = req.params
   try {
-    const perfil = await service.getPerfilCompletoAsync(Number(idusuario))
+    const perfil = await service.getPerfilCompletoAsync(Number(idusuario), req.usuario)
     res.status(StatusCodes.OK).json(perfil)
   } catch (error) {
     console.error('[LOGIN ERROR]', error)

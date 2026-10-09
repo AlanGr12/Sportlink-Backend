@@ -56,6 +56,16 @@ class PruebasService {
     if (!horafin)     throw { status: 400, message: 'La hora de fin es obligatoria' }
     if (!descripcion) throw { status: 400, message: 'La descripción es obligatoria' }
 
+    // Defensa en profundidad: solo clubes aprobados por el backoffice pueden publicar
+    const estadoClub = await this.clubesRepo.getEstadoAsync(Number(idclub))
+    if (estadoClub !== 'APROBADO') {
+      throw {
+        status: 403,
+        codigo: estadoClub === 'RECHAZADO' ? 'CLUB_RECHAZADO' : 'CLUB_PENDIENTE',
+        message: 'Tu club debe estar aprobado por el equipo de administración para publicar pruebas.'
+      }
+    }
+
     let imagenUrl = imagen
     if (archivo) {
       imagenUrl = await this.repository.subirFotoPruebaAsync(archivo)

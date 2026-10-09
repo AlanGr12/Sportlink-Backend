@@ -1,10 +1,12 @@
 import EmpleoRepository from '../repositories/empleo-repository.js'
+import ClubesRepository from '../repositories/clubes-repository.js'
 import chatRepository from '../repositories/chat-repository.js'
 import supabase from '../configs/supabase-config.js'
 
 class EmpleoService {
   constructor() {
     this.repository = new EmpleoRepository()
+    this.clubesRepo = new ClubesRepository()
   }
 
   async getAllAsync() {
@@ -36,6 +38,16 @@ class EmpleoService {
     if (!idclub)    throw { status: 400, message: 'El club es obligatorio' }
     if (!iddeporte) throw { status: 400, message: 'El deporte es obligatorio' }
     if (!nombre)    throw { status: 400, message: 'El nombre de la vacante es obligatorio' }
+
+    // Defensa en profundidad: solo clubes aprobados por el backoffice pueden publicar
+    const estadoClub = await this.clubesRepo.getEstadoAsync(Number(idclub))
+    if (estadoClub !== 'APROBADO') {
+      throw {
+        status: 403,
+        codigo: estadoClub === 'RECHAZADO' ? 'CLUB_RECHAZADO' : 'CLUB_PENDIENTE',
+        message: 'Tu club debe estar aprobado por el equipo de administración para publicar empleos.'
+      }
+    }
 
     // Validar estrictamente que 'estado' sea booleano o las cadenas 'true'/'false' (por defecto activo)
     let estadoBool = true

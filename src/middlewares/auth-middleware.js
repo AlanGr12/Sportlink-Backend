@@ -60,6 +60,30 @@ export async function verificarToken(req, res, next) {
 }
 
 /**
+ * Middleware: autenticacionOpcional
+ *
+ * Igual que verificarToken pero sin cortar la petición: si hay un token válido
+ * completa req.usuario (con es_admin); si falta o es inválido, sigue como anónimo.
+ */
+export async function autenticacionOpcional(req, res, next) {
+  const authHeader = req.headers['authorization']
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return next()
+
+  try {
+    req.usuario = jwt.verify(authHeader.slice(7), JWT_SECRET, { algorithms: ['HS256'] })
+    const { data } = await supabase
+      .from('usuarios')
+      .select('es_admin')
+      .eq('idusuario', req.usuario.idusuario)
+      .maybeSingle()
+    req.usuario.es_admin = data?.es_admin === true
+  } catch {
+    req.usuario = undefined
+  }
+  next()
+}
+
+/**
  * Middleware factory: requiereRol
  *
  * Verifica que req.usuario.tipousuario esté dentro de los roles permitidos.

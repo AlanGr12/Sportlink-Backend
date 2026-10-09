@@ -59,8 +59,9 @@ class RecomendacionesRepository {
   async getClubesPorDeportesAsync(iddeportes) {
     const { data, error } = await supabase
       .from('clubesxdeportes')
-      .select('deportes(deporte), clubes(idusuario, nombre, fotoperfil)')
+      .select('deportes(deporte), clubes!inner(idusuario, nombre, fotoperfil, estado)')
       .in('iddeporte', iddeportes)
+      .eq('clubes.estado', 'APROBADO') // nunca sugerir clubes pendientes o rechazados
     if (error) throw new Error(error.message)
     return (data || [])
       .filter(r => r.clubes)

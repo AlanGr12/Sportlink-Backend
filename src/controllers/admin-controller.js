@@ -26,6 +26,9 @@ router.get('/kpis', responder(() => adminService.getKPIs()))
 // GET /api/admin/clubes?estado=PENDIENTE | APROBADO | RECHAZADO
 router.get('/clubes', responder((req) => adminService.getClubesModeracion({ estado: req.query.estado })))
 
+// GET /api/admin/clubes/:idclub  → ficha completa (usuario, deportes, imágenes)
+router.get('/clubes/:idclub', responder((req) => adminService.getClubDetalle(req.params.idclub)))
+
 // PATCH /api/admin/clubes/:idclub/estado  Body: { estado: 'APROBADO' | 'RECHAZADO' }
 router.patch('/clubes/:idclub/estado', async (req, res) => {
   try {

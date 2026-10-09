@@ -1,5 +1,5 @@
 class Club {
-  constructor({ idclub, idusuario, nombre, ubicacion, fotoperfil, descripcion, deportes, direccion, latitud, longitud } = {}) {
+  constructor({ idclub, idusuario, nombre, ubicacion, fotoperfil, descripcion, deportes, direccion, latitud, longitud, estado } = {}) {
     this.idclub = idclub
     this.idusuario = idusuario
     this.nombre = nombre
@@ -8,6 +8,7 @@ class Club {
     this.descripcion = descripcion
     this.deportes = deportes || []
     this.direccion = direccion ?? null
+    this.estado = estado ? String(estado).toUpperCase() : 'PENDIENTE'
     this.latitud = (latitud !== undefined && latitud !== null && latitud !== '') ? Number(latitud) : null
     this.longitud = (longitud !== undefined && longitud !== null && longitud !== '') ? Number(longitud) : null
   }

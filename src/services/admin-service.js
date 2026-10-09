@@ -13,6 +13,14 @@ class AdminService {
     return await adminRepository.getClubesModeracionAsync({ estado })
   }
 
+  async getClubDetalle(idclub) {
+    const id = Number(idclub)
+    if (!id) throw { status: 400, message: 'ID de club requerido' }
+    const club = await adminRepository.getClubDetalleAsync(id)
+    if (!club) throw { status: 404, message: 'Club no encontrado' }
+    return club
+  }
+
   async actualizarEstadoClub(idclub, estado, adminUsuario) {
     if (!idclub) throw { status: 400, message: 'ID de club requerido' }
     const estadoNorm = String(estado || '').toUpperCase()
