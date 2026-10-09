@@ -27,4 +27,7 @@ router.patch('/leer-todas', verificarToken, responder((req) => service.marcarTod
 // PATCH /api/notificaciones/:id/leer
 router.patch('/:id/leer', verificarToken, responder((req) => service.marcarComoLeida(req.params.id, req.usuario.idusuario)))
 
+// DELETE /api/notificaciones/:id
+router.delete('/:id', verificarToken, responder((req) => service.eliminarNotificacion(req.params.id, req.usuario.idusuario)))
+
 export default router

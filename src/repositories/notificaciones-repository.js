@@ -124,6 +124,17 @@ class NotificacionesRepository {
     if (error) throw new Error(error.message)
     return true
   }
+
+  async eliminarNotificacion(id_notificacion, id_usuario) {
+    const { error } = await supabase
+      .from('notificaciones')
+      .delete()
+      .eq('id', id_notificacion)
+      .eq('id_usuario', id_usuario)
+
+    if (error) throw new Error(error.message)
+    return true
+  }
 }
 
 export default NotificacionesRepository

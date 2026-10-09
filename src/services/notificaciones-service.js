@@ -29,6 +29,13 @@ class NotificacionesService {
     return { message: 'Notificaciones marcadas como leídas' }
   }
 
+  async eliminarNotificacion(idNotificacion, idusuario) {
+    const id = Number(idNotificacion)
+    if (!Number.isInteger(id) || id <= 0) throw { status: 400, message: 'Id de notificación inválido' }
+    await this.repository.eliminarNotificacion(id, idusuario)
+    return { message: 'Notificación eliminada correctamente' }
+  }
+
   /**
    * Helper reutilizable para disparar notificaciones desde otros servicios.
    * Nunca lanza: una notificación fallida no debe romper la operación que la originó.
