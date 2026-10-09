@@ -58,6 +58,16 @@ class ClubesRepository {
     return String(data.estado || 'PENDIENTE').toUpperCase()
   }
 
+  /** ids de deportes que el club tiene seleccionados (clubesxdeportes). */
+  async getIdsDeportesAsync(idclub) {
+    const { data, error } = await supabase
+      .from('clubesxdeportes')
+      .select('iddeporte')
+      .eq('idclub', idclub)
+    if (error) throw new Error(error.message)
+    return (data || []).map(r => r.iddeporte)
+  }
+
   async getClubByIdAsync(id) {
     return await this.getByIdAsync(id)
   }

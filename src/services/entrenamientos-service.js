@@ -1,4 +1,5 @@
 import EntrenamientosRepository from '../repositories/entrenamientos-repository.js'
+import { verificarDeporteAutorizado } from '../utils/validaciones-actividad.js'
 import EntrenadoresRepository from '../repositories/entrenadores-repository.js'
 import CalendarioEventosService from './calendarioeventos-service.js'
 import chatRepository from '../repositories/chat-repository.js'
@@ -101,6 +102,9 @@ class EntrenamientosService {
     }
     const estadoBool = typeof estado === 'boolean' ? estado : String(estado).toLowerCase() === 'true'
 
+    // Solo deportes que el entrenador seleccionó en su perfil
+    verificarDeporteAutorizado(iddeporte, await this.entrenadoresRepo.getIdsDeportesAsync(Number(identrenador)), 'entrenador')
+
     let imagenUrl = imagen
     if (archivo) {
       imagenUrl = await this.repository.subirImagenEntrenamientoAsync(archivo)
@@ -201,6 +205,15 @@ class EntrenamientosService {
       const fechaEntrLimpia = String(fechaentr).substring(0, 10)
       if (fechaEntrLimpia < hoy) {
         throw { status: 400, message: 'La fecha del entrenamiento no puede ser anterior a la fecha actual' }
+      }
+    }
+
+    // Si cambia el deporte, debe seguir siendo uno de los del entrenador
+    if (iddeporte) {
+      const actual = await this.repository.getByIdAsync(id)
+      if (actual && Number(actual.iddeporte) !== Number(iddeporte)) {
+        const entrenador = identrenador ? Number(identrenador) : Number(actual.identrenador)
+        verificarDeporteAutorizado(iddeporte, await this.entrenadoresRepo.getIdsDeportesAsync(entrenador), 'entrenador')
       }
     }
 

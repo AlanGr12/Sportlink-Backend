@@ -1,4 +1,5 @@
 import PruebasRepository from '../repositories/pruebas-repository.js'
+import { verificarDeporteAutorizado } from '../utils/validaciones-actividad.js'
 import ClubesRepository from '../repositories/clubes-repository.js'
 import CalendarioEventosService from './calendarioeventos-service.js'
 import chatRepository from '../repositories/chat-repository.js'
@@ -65,6 +66,9 @@ class PruebasService {
         message: 'Tu club debe estar aprobado por el equipo de administración para publicar pruebas.'
       }
     }
+
+    // Solo deportes que el club seleccionó en su perfil
+    verificarDeporteAutorizado(iddeporte, await this.clubesRepo.getIdsDeportesAsync(Number(idclub)), 'club')
 
     let imagenUrl = imagen
     if (archivo) {
@@ -213,6 +217,15 @@ class PruebasService {
       const fechaPruebaLimpia = String(fechaprueba).substring(0, 10)
       if (fechaPruebaLimpia < hoy) {
         throw { status: 400, message: 'La fecha de la prueba no puede ser anterior a la fecha actual' }
+      }
+    }
+
+    // Si cambia el deporte, debe seguir siendo uno de los del club
+    if (iddeporte !== undefined) {
+      const actual = await this.repository.getByIdAsync(id)
+      if (actual && Number(actual.iddeporte) !== Number(iddeporte)) {
+        const club = idclub !== undefined ? Number(idclub) : Number(actual.idclub)
+        verificarDeporteAutorizado(iddeporte, await this.clubesRepo.getIdsDeportesAsync(club), 'club')
       }
     }
 

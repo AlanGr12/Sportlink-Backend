@@ -1,4 +1,5 @@
 import supabase from '../configs/supabase-config.js'
+import { verificarGeneroJugador } from '../utils/validaciones-actividad.js'
 import ListaEsperaRepository from '../repositories/lista-espera-repository.js'
 import PruebasRepository from '../repositories/pruebas-repository.js'
 import EntrenamientosRepository from '../repositories/entrenamientos-repository.js'
@@ -49,6 +50,8 @@ class ListaEsperaService {
     idActividad = Number(idActividad)
     const idJugador = await this.#resolverJugador(idusuario)
     const actividad = await this.#getActividad(idActividad)
+
+    verificarGeneroJugador(actividad.genero, await this.jugadoresRepo.getByIdAsync(idJugador), this.tipo === 'prueba' ? 'prueba' : 'sesión de entrenamiento')
 
     const capacidad = this.#capacidad(actividad)
     const inscriptos = await this.repository.contarInscriptos(idActividad)

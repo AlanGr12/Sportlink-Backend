@@ -115,6 +115,16 @@ async subirFotoPerfilAsync(archivo) {
   return data.publicUrl
 }
 
+/** ids de deportes que el entrenador tiene seleccionados (entrenadoresxdeportes). */
+async getIdsDeportesAsync(identrenador) {
+  const { data, error } = await supabase
+    .from('entrenadoresxdeportes')
+    .select('iddeporte')
+    .eq('identrenador', identrenador)
+  if (error) throw new Error(error.message)
+  return (data || []).map(r => r.iddeporte)
+}
+
 async asignarDeporteAsync(identrenador, iddeporte) {
   const { error } = await supabase
     .from('entrenadoresxdeportes')

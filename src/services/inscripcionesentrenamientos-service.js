@@ -1,4 +1,5 @@
 import InscripcionesEntrenamientosRepository from '../repositories/inscripcionesentrenamientos-repository.js'
+import { verificarGeneroJugador } from '../utils/validaciones-actividad.js'
 import JugadoresRepository from '../repositories/jugadores-repository.js'
 import EntrenamientosRepository from '../repositories/entrenamientos-repository.js'
 import CalendarioEventosService from './calendarioeventos-service.js'
@@ -37,6 +38,10 @@ class InscripcionesEntrenamientosService {
 
     const existe = await this.repository.isInscrito(entrenamientoId, jugadorId)
     if (existe) throw { status: 400, message: 'El jugador ya está inscripto en este entrenamiento' }
+
+    // Validar género del deportista contra el del entrenamiento
+    const entrenamientoActual = await new EntrenamientosRepository().getByIdAsync(entrenamientoId)
+    verificarGeneroJugador(entrenamientoActual?.genero, await this.jugadoresRepo.getByIdAsync(jugadorId), 'sesión de entrenamiento')
 
     const ins = await this.repository.crearInscripcion(entrenamientoId, jugadorId)
 

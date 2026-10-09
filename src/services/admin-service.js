@@ -1,7 +1,9 @@
 import adminRepository from '../repositories/admin-repository.js'
-import notificacionesService from './notificaciones-service.js'
+import NotificacionesService from './notificaciones-service.js'
 import moderacionService from './moderacion-service.js'
 import publicacionesService from './publicaciones-service.js'
+
+const notificacionesService = new NotificacionesService()
 
 class AdminService {
 

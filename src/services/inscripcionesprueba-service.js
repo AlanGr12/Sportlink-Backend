@@ -1,4 +1,5 @@
 import InscripcionesPruebaRepository from '../repositories/inscripcionesprueba-repository.js'
+import { verificarGeneroJugador } from '../utils/validaciones-actividad.js'
 import JugadoresRepository from '../repositories/jugadores-repository.js'
 import PruebasRepository from '../repositories/pruebas-repository.js'
 import CalendarioEventosService from './calendarioeventos-service.js'
@@ -37,6 +38,9 @@ class InscripcionesPruebaService {
 
     // Validar cupo disponible
     const pruebaCupo = await this.pruebasRepo.getByIdAsync(idprueba)
+
+    // Validar género del deportista contra el de la prueba
+    verificarGeneroJugador(pruebaCupo?.genero, await this.jugadoresRepo.getByIdAsync(idjugador), 'prueba')
     const capacidad = Number(pruebaCupo?.cupo || 0)
     if (capacidad > 0) {
       const inscriptos = await this.repository.getAllAsync(idprueba)
