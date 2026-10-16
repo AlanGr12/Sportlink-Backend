@@ -107,13 +107,12 @@ router.put('/perfil/:idusuario', verificarToken, async (req, res) => {
     return res.status(StatusCodes.FORBIDDEN).json({ error: 'No tienes permiso para actualizar este perfil' })
   }
 
-  const { biografia } = req.body
+  const { biografia, nombre, apellido, ubicacion, telefono } = req.body
   try {
-    const usuarioActualizado = await service.actualizarBiografiaAsync(Number(idusuario), biografia)
+    const actualizado = await service.actualizarPerfilAsync(Number(idusuario), { biografia, nombre, apellido, ubicacion, telefono })
     res.status(StatusCodes.OK).json({
       mensaje: 'Perfil actualizado correctamente',
-      biografia: usuarioActualizado?.biografia ?? biografia,
-      usuario: usuarioActualizado
+      ...actualizado
     })
   } catch (error) {
     console.error('[ACTUALIZAR PERFIL ERROR]', error)

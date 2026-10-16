@@ -2,10 +2,27 @@ import { Router } from 'express'
 import { StatusCodes } from 'http-status-codes'
 import ClubesService from '../services/clubes-service.js'
 import multer from 'multer'
-import { autenticacionOpcional } from '../middlewares/auth-middleware.js'
+import { autenticacionOpcional, verificarToken } from '../middlewares/auth-middleware.js'
+import ClubesRepository from '../repositories/clubes-repository.js'
 
 const router = Router()
 const service = new ClubesService()
+const clubesRepository = new ClubesRepository()
+
+// Solo el club dueño del perfil (o un administrador) puede modificarlo
+const soloDuenioDelClub = async (req, res, next) => {
+  try {
+    if (req.usuario.es_admin === true) return next()
+    const club = await clubesRepository.getByIdAsync(req.params.id).catch(() => null)
+    if (!club) return res.status(StatusCodes.NOT_FOUND).json({ error: 'No se encontró el club' })
+    if (Number(club.idusuario) !== Number(req.usuario.idusuario)) {
+      return res.status(StatusCodes.FORBIDDEN).json({ error: 'No tenés permiso para modificar este club' })
+    }
+    next()
+  } catch (error) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
+  }
+}
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -87,9 +104,9 @@ const handlerActualizarClub = async (req, res) => {
 }
 
 // PUT /api/clubes/:id
-router.put('/:id', upload.single('fotoperfil'), handlerActualizarClub)
+router.put('/:id', verificarToken, soloDuenioDelClub, upload.single('fotoperfil'), handlerActualizarClub)
 
 // PUT /api/clubes/perfil/:id
-router.put('/perfil/:id', upload.single('fotoperfil'), handlerActualizarClub)
+router.put('/perfil/:id', verificarToken, soloDuenioDelClub, upload.single('fotoperfil'), handlerActualizarClub)
 
 export default router

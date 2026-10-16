@@ -36,7 +36,15 @@ class UsuariosRepository {
       .select()
       .single()
 
-    if (error) throw new Error(error.message)
+    if (error) {
+      // 23505 = unique_violation: el email ya existe
+      if (error.code === '23505' || /duplicate key|unique constraint/i.test(error.message)) {
+        const err = new Error('Ya existe una cuenta registrada con ese email. Probá iniciar sesión o usá otro email.')
+        err.status = 409
+        throw err
+      }
+      throw new Error(error.message)
+    }
     return data
   }
 
@@ -87,6 +95,25 @@ class UsuariosRepository {
     } catch (err) {
       throw err
     }
+  }
+
+  /**
+   * Actualiza los datos básicos del perfil en la tabla propia del rol
+   * (jugadores / entrenadores / clubes), buscando por idusuario.
+   */
+  async actualizarDatosPerfilAsync(idusuario, tipousuario, campos) {
+    const tabla = { jugador: 'jugadores', entrenador: 'entrenadores', club: 'clubes' }[String(tipousuario).toLowerCase()]
+    if (!tabla) throw { status: 400, message: 'Tipo de usuario no soporta edición de perfil' }
+
+    const { data, error } = await supabase
+      .from(tabla)
+      .update(campos)
+      .eq('idusuario', idusuario)
+      .select()
+      .maybeSingle()
+
+    if (error) throw new Error(error.message)
+    return data
   }
 
   /**

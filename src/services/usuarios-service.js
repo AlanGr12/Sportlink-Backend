@@ -137,6 +137,41 @@ class UsuariosService {
     return url
   }
 
+  /**
+   * Actualiza biografía (tabla usuarios) y datos básicos (tabla del rol).
+   * Solo se aceptan los campos editables según el tipo de usuario.
+   */
+  async actualizarPerfilAsync(idusuario, data = {}) {
+    if (!idusuario) throw { status: 400, message: 'ID de usuario requerido' }
+    const usuario = await this.repository.getByIdAsync(idusuario)
+    if (!usuario) throw { status: 404, message: 'No se encontró el usuario' }
+
+    const tipo = String(usuario.tipousuario).toLowerCase()
+    const permitidos = tipo === 'club'
+      ? ['nombre', 'ubicacion']
+      : ['nombre', 'apellido', 'ubicacion', 'telefono']
+
+    const campos = {}
+    for (const k of permitidos) {
+      if (data[k] === undefined) continue
+      const v = typeof data[k] === 'string' ? data[k].trim() : data[k]
+      if (k === 'nombre' && !v) throw { status: 400, message: 'El nombre no puede estar vacío.' }
+      campos[k] = v === '' ? null : v
+    }
+
+    if (Object.keys(campos).length > 0) {
+      await this.repository.actualizarDatosPerfilAsync(idusuario, tipo, campos)
+    }
+
+    let biografia = data.biografia
+    if (biografia !== undefined) {
+      const u = await this.repository.actualizarBiografiaAsync(idusuario, biografia)
+      biografia = u?.biografia ?? biografia
+    }
+
+    return { ...campos, ...(biografia !== undefined ? { biografia } : {}) }
+  }
+
   async actualizarBiografiaAsync(idusuario, biografia) {
     if (!idusuario) throw { status: 400, message: 'ID de usuario requerido' }
     return await this.repository.actualizarBiografiaAsync(idusuario, biografia)
