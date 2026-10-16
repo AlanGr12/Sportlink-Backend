@@ -19,7 +19,8 @@ function haPasado(fechaStr, horaFinStr) {
 const SELECT_ENTRENAMIENTO_QUERY = `
   *,
   deportes ( iddeporte, deporte ),
-  entrenadores ( identrenador, idusuario, nombre, apellido )
+  entrenadores ( identrenador, idusuario, nombre, apellido ),
+  clubes ( idclub, idusuario, nombre, fotoperfil )
 `
 
 class EntrenamientosRepository {
@@ -64,6 +65,7 @@ class EntrenamientosRepository {
 
     if (filters.iddeporte) query = query.eq('iddeporte', filters.iddeporte)
     if (filters.identrenador) query = query.eq('identrenador', filters.identrenador)
+    if (filters.id_club) query = query.eq('id_club', filters.id_club)
     if (typeof filters.estado !== 'undefined') query = query.eq('estado', filters.estado)
     
     // Si viene filtro fechaFrom y es posterior a hoy se usa, de lo contrario por defecto filtramos >= hoy
@@ -131,12 +133,12 @@ class EntrenamientosRepository {
       const [
         iddeporte, identrenador, precio, cantidad, titulo, imagen,
         ubicacion, fechaentr, horainicio, horafin, estado, descripcion,
-        genero, nivel, direccion, latitud, longitud
+        genero, nivel, direccion, latitud, longitud, id_club
       ] = args
       params = {
         iddeporte, identrenador, precio, cantidad, titulo, imagen,
         ubicacion, fechaentr, horainicio, horafin, estado, descripcion,
-        genero, nivel, direccion, latitud, longitud
+        genero, nivel, direccion, latitud, longitud, id_club
       }
     }
 
@@ -169,7 +171,8 @@ class EntrenamientosRepository {
         nivel: params.nivel,
         direccion: dir,
         latitud: lat,
-        longitud: lng
+        longitud: lng,
+        id_club: params.id_club ?? null
       })
       .select(SELECT_ENTRENAMIENTO_QUERY)
       .single()

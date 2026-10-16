@@ -32,7 +32,8 @@ class ModeracionService {
   async eliminarEntrenamiento(id, usuario) {
     const duenio = await moderacionRepository.getDuenioEntrenamientoAsync(id)
     if (duenio === undefined) throw { status: 404, message: 'Entrenamiento no encontrado' }
-    if (!esAdmin(usuario) && Number(duenio) !== Number(usuario.idusuario)) {
+    const duenioClub = await moderacionRepository.getClubDuenioEntrenamientoAsync(id)
+    if (!esAdmin(usuario) && Number(duenio) !== Number(usuario.idusuario) && Number(duenioClub) !== Number(usuario.idusuario)) {
       throw { status: 403, message: 'No tienes permiso para eliminar este entrenamiento' }
     }
     await moderacionRepository.eliminarEntrenamientoAsync(id)

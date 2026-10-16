@@ -67,8 +67,8 @@ router.get('/mios', verificarToken, requiereRol('entrenador'), async (req, res) 
   }
 })
 
-// POST /api/entrenamientos — Solo entrenadores pueden crear entrenamientos
-router.post('/', verificarToken, requiereRol('entrenador'), upload.single('imagen'), async (req, res) => {
+// POST /api/entrenamientos — Entrenadores, o clubes asignando a uno de sus entrenadores vinculados
+router.post('/', verificarToken, requiereRol('entrenador', 'club'), upload.single('imagen'), async (req, res) => {
   try {
     const direccion = (req.body.direccion === '' || req.body.direccion === undefined || req.body.direccion === null)
       ? (req.body.direccion ?? null)
@@ -89,7 +89,7 @@ router.post('/', verificarToken, requiereRol('entrenador'), upload.single('image
       longitud: longitud === '' ? null : longitud
     }
 
-    const ent = await service.crearEntrenamiento(payload, req.file, req.usuario.idusuario)
+    const ent = await service.crearEntrenamiento(payload, req.file, req.usuario.idusuario, req.usuario.tipousuario)
     res.status(StatusCodes.CREATED).json(ent)
   } catch (error) {
     res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })

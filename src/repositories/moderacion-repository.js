@@ -90,10 +90,18 @@ class ModeracionRepository {
   /** idusuario dueño del entrenamiento (vía entrenador); undefined si no existe. */
   async getDuenioEntrenamientoAsync(identrenamiento) {
     const { data, error } = await supabase
-      .from('entrenamientos').select('identrenamientos, entrenadores ( idusuario )').eq('identrenamientos', identrenamiento).maybeSingle()
+      .from('entrenamientos').select('identrenamientos, entrenadores ( idusuario ), clubes ( idusuario )').eq('identrenamientos', identrenamiento).maybeSingle()
     if (error) throw new Error(error.message)
     if (!data) return undefined
     return data.entrenadores?.idusuario ?? null
+  }
+
+  /** idusuario del club que respalda el entrenamiento (null si no tiene club). */
+  async getClubDuenioEntrenamientoAsync(identrenamiento) {
+    const { data, error } = await supabase
+      .from('entrenamientos').select('clubes ( idusuario )').eq('identrenamientos', identrenamiento).maybeSingle()
+    if (error) throw new Error(error.message)
+    return data?.clubes?.idusuario ?? null
   }
 
   async eliminarPruebaAsync(idprueba) {

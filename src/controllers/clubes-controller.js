@@ -4,10 +4,14 @@ import ClubesService from '../services/clubes-service.js'
 import multer from 'multer'
 import { autenticacionOpcional, verificarToken } from '../middlewares/auth-middleware.js'
 import ClubesRepository from '../repositories/clubes-repository.js'
+import VinculacionesService from '../services/vinculaciones-service.js'
+import ClubAnalyticsService from '../services/club-analytics-service.js'
 
 const router = Router()
 const service = new ClubesService()
 const clubesRepository = new ClubesRepository()
+const vinculacionesService = new VinculacionesService()
+const analyticsService = new ClubAnalyticsService()
 
 // Solo el club dueño del perfil (o un administrador) puede modificarlo
 const soloDuenioDelClub = async (req, res, next) => {
@@ -36,6 +40,40 @@ const upload = multer({
 })
 
 // GET /api/clubes
+// ── Backoffice del club (estadísticas) ──────────────────────────────────────
+// Declarado antes de las rutas /:id. Acceso: usuario de tipo club o administrador.
+const soloClubOAdmin = (req, res, next) => {
+  const esClub = String(req.usuario?.tipousuario || '').toLowerCase() === 'club'
+  if (esClub || req.usuario?.es_admin === true) return next()
+  res.status(StatusCodes.FORBIDDEN).json({ error: 'Acceso denegado. Solo los clubes pueden ver sus estadísticas.' })
+}
+
+// GET /api/clubes/backoffice/estadisticas?rango=mes|trimestre|historico[&idclub=N (solo admin)]
+router.get('/backoffice/estadisticas', verificarToken, soloClubOAdmin, async (req, res) => {
+  try {
+    const club = await analyticsService.resolverClub(req.usuario, req.query.idclub)
+    const datos = await analyticsService.obtenerEstadisticas(club, req.query.rango || 'historico')
+    res.status(StatusCodes.OK).json(datos)
+  } catch (error) {
+    if (!error.status) console.error('[CLUB ESTADISTICAS ERROR]', error)
+    res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
+  }
+})
+
+// GET /api/clubes/backoffice/exportar?tipo=entrenamientos|pruebas|entrenadores&rango=... — CSV
+router.get('/backoffice/exportar', verificarToken, soloClubOAdmin, async (req, res) => {
+  try {
+    const club = await analyticsService.resolverClub(req.usuario, req.query.idclub)
+    const { nombreArchivo, csv } = await analyticsService.exportarCsv(club, req.query.rango || 'historico', req.query.tipo || 'entrenamientos')
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+    res.setHeader('Content-Disposition', `attachment; filename="${nombreArchivo}"`)
+    res.status(StatusCodes.OK).send(csv)
+  } catch (error) {
+    if (!error.status) console.error('[CLUB EXPORTAR ERROR]', error)
+    res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
+  }
+})
+
 router.get('/', async (req, res) => {
   try {
     const clubes = await service.getAllAsync()
@@ -102,6 +140,15 @@ const handlerActualizarClub = async (req, res) => {
     res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
   }
 }
+
+// GET /api/clubes/:id/entrenadores — entrenadores vinculados (estado ACEPTADO) del club
+router.get('/:id/entrenadores', async (req, res) => {
+  try {
+    res.status(StatusCodes.OK).json(await vinculacionesService.obtenerEntrenadoresDelClub(req.params.id))
+  } catch (error) {
+    res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
+  }
+})
 
 // PUT /api/clubes/:id
 router.put('/:id', verificarToken, soloDuenioDelClub, upload.single('fotoperfil'), handlerActualizarClub)

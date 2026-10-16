@@ -4,12 +4,14 @@ import EntrenadoresRepository from '../repositories/entrenadores-repository.js'
 import CalendarioEventosService from './calendarioeventos-service.js'
 import chatRepository from '../repositories/chat-repository.js'
 import eventos from './notificaciones-eventos-service.js'
+import VinculacionesRepository from '../repositories/vinculaciones-repository.js'
 
 class EntrenamientosService {
   constructor() {
     this.repository = new EntrenamientosRepository()
     this.entrenadoresRepo = new EntrenadoresRepository()
     this.calendarioService = new CalendarioEventosService()
+    this.vinculacionesRepo = new VinculacionesRepository()
   }
 
   async getAllAsync() {
@@ -25,6 +27,7 @@ class EntrenamientosService {
 
     if (query.iddeporte) filters.iddeporte = Number(query.iddeporte)
     if (query.identrenador) filters.identrenador = Number(query.identrenador)
+    if (query.id_club) filters.id_club = Number(query.id_club)
 
     if (typeof query.estado !== 'undefined') {
       if (query.estado === 'true' || query.estado === 'false') {
@@ -54,8 +57,8 @@ class EntrenamientosService {
     return await this.getByIdAsync(id)
   }
 
-  async crearEntrenamiento(data, archivo, idusuario) {
-    const {
+  async crearEntrenamiento(data, archivo, idusuario, tipousuario) {
+    let {
       iddeporte,
       identrenador,
       precio,
@@ -74,6 +77,25 @@ class EntrenamientosService {
       latitud,
       longitud
     } = data || {}
+
+    // ── Quién publica: el entrenador (se resuelve por token) o un club con un entrenador vinculado ──
+    let idClub = null
+    let clubCreador = null
+    if (String(tipousuario).toLowerCase() === 'club') {
+      clubCreador = await this.vinculacionesRepo.getClubPorUsuarioAsync(idusuario)
+      if (!clubCreador) throw { status: 403, message: 'Tu cuenta no tiene un club asociado.' }
+      if (!identrenador) throw { status: 400, message: 'Elegí el entrenador de tu club que dará el entrenamiento.' }
+      const vinculo = await this.vinculacionesRepo.getAceptadaAsync(clubCreador.idclub, Number(identrenador))
+      if (!vinculo) throw { status: 403, message: 'Ese entrenador no está vinculado a tu club.' }
+      idClub = clubCreador.idclub
+    } else {
+      const entrenadorCreador = await this.vinculacionesRepo.getEntrenadorPorUsuarioAsync(idusuario)
+      if (!entrenadorCreador) throw { status: 403, message: 'Tu cuenta no tiene un perfil de entrenador.' }
+      identrenador = entrenadorCreador.identrenador
+      // Si el entrenador pertenece a un club, el entrenamiento queda respaldado por ese club
+      const vinculo = await this.vinculacionesRepo.getAceptadaDeEntrenadorAsync(identrenador)
+      idClub = vinculo?.id_club ?? null
+    }
 
     if (!iddeporte) throw { status: 400, message: 'El deporte es obligatorio' }
     if (!identrenador) throw { status: 400, message: 'El entrenador es obligatorio' }
@@ -133,7 +155,8 @@ class EntrenamientosService {
       nivel,
       dir,
       lat,
-      lng
+      lng,
+      idClub
     )
 
     // Intentar crear evento en el calendario del entrenador (no interrumpe si falla)
@@ -162,6 +185,9 @@ class EntrenamientosService {
       const idusuarioAdmin = idusuario ? Number(idusuario) : null
       
       const entrenador = await this.entrenadoresRepo.getByIdAsync(Number(identrenador))
+      // Si publica el club, el entrenador asignado también participa del grupo
+      const participantes = new Set(idusuarioAdmin ? [idusuarioAdmin] : [])
+      if (clubCreador && entrenador?.idusuario) participantes.add(Number(entrenador.idusuario))
       const nombreEntrenador = entrenador ? `${entrenador.nombre} ${entrenador.apellido}`.trim() : 'Entrenador'
 
       await chatRepository.crearConversacionRPC(
@@ -171,7 +197,7 @@ class EntrenamientosService {
         null,
         entrenamiento.identrenamientos,  // PK del entrenamiento recien creado
         null,
-        idusuarioAdmin ? [idusuarioAdmin] : [],
+        [...participantes],
         idusuarioAdmin
       )
     } catch (errChat) {
@@ -184,12 +210,12 @@ class EntrenamientosService {
     return entrenamiento
   }
 
-  async crearEntrenamientoAsync(data, archivo, idusuario) {
-    return await this.crearEntrenamiento(data, archivo, idusuario)
+  async crearEntrenamientoAsync(data, archivo, idusuario, tipousuario) {
+    return await this.crearEntrenamiento(data, archivo, idusuario, tipousuario)
   }
 
-  async insertarAsync(data, archivo, idusuario) {
-    return await this.crearEntrenamiento(data, archivo, idusuario)
+  async insertarAsync(data, archivo, idusuario, tipousuario) {
+    return await this.crearEntrenamiento(data, archivo, idusuario, tipousuario)
   }
 
   async editarEntrenamiento(id, data, archivo, idusuario) {
