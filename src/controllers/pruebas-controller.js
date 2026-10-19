@@ -141,6 +141,16 @@ router.put('/:id', verificarToken, requiereRol('club'), upload.single('imagen'),
 // PUT /api/pruebas/actualizarPrueba/:id — Alias
 router.put('/actualizarPrueba/:id', verificarToken, requiereRol('club'), upload.single('imagen'), handlerActualizarPrueba)
 
+// POST /api/pruebas/:id/invitar — club dueño invita a un deportista a esta prueba
+router.post('/:id/invitar', verificarToken, requiereRol('club'), async (req, res) => {
+  try {
+    await moderacionService.invitarAEvento('prueba', req.params.id, req.body.idusuario, req.usuario)
+    res.status(StatusCodes.OK).json({ mensaje: 'Invitación enviada' })
+  } catch (error) {
+    res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
+  }
+})
+
 // DELETE /api/pruebas/:id — dueño del recurso o administrador
 router.delete('/:id', verificarToken, async (req, res) => {
   try {

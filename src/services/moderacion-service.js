@@ -39,6 +39,30 @@ class ModeracionService {
     await moderacionRepository.eliminarEntrenamientoAsync(id)
   }
 
+  /** Club dueño (o entrenador dueño, para entrenamientos) invita a un deportista a una prueba/entrenamiento puntual. */
+  async invitarAEvento(tipoActividad, id, idUsuarioDestino, usuario) {
+    const esPrueba = tipoActividad === 'prueba'
+
+    const duenio = esPrueba
+      ? await moderacionRepository.getDuenioPruebaAsync(id)
+      : await moderacionRepository.getDuenioEntrenamientoAsync(id)
+    if (duenio === undefined) throw { status: 404, message: `No se encontró ${esPrueba ? 'la prueba' : 'el entrenamiento'}` }
+    const duenioClub = esPrueba ? duenio : await moderacionRepository.getClubDuenioEntrenamientoAsync(id)
+
+    const esDuenio = Number(duenio) === Number(usuario.idusuario) || Number(duenioClub) === Number(usuario.idusuario)
+    if (!esAdmin(usuario) && !esDuenio) {
+      throw { status: 403, message: `No tenés permiso para invitar a ${esPrueba ? 'esta prueba' : 'este entrenamiento'}` }
+    }
+
+    if (!idUsuarioDestino) throw { status: 400, message: 'El destinatario es obligatorio' }
+    let destino
+    try { destino = await usuariosRepository.getByIdAsync(idUsuarioDestino) } catch { destino = null }
+    if (!destino) throw { status: 404, message: 'El usuario a invitar no existe' }
+    if (destino.tipousuario !== 'jugador') throw { status: 400, message: 'Solo se puede invitar a deportistas' }
+
+    await eventos.invitacionEvento(tipoActividad, id, Number(idUsuarioDestino))
+  }
+
   async eliminarUsuario(id, usuario) {
     if (!esAdmin(usuario)) throw { status: 403, message: 'Acceso denegado. Se requieren permisos de administrador.' }
     if (Number(id) === Number(usuario.idusuario)) {

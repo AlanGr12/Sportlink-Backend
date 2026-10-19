@@ -367,8 +367,7 @@ class AdminRepository {
         idprueba,
         identrenamiento,
         idempleo,
-        createdat,
-        usuarios ( idusuario, email, tipousuario )
+        createdat
       `, { count: 'exact' })
 
     if (search && search.trim()) {
@@ -380,8 +379,24 @@ class AdminRepository {
     const { data: publicaciones, count, error } = await query
     if (error) throw new Error(error.message)
 
+    // No hay FK declarada entre publicaciones.idusuario y usuarios, así que el
+    // embed de PostgREST no es viable: se resuelve el autor con una consulta aparte.
+    const idsUsuarios = [...new Set((publicaciones || []).map(p => p.idusuario).filter(Boolean))]
+    let usuariosPorId = {}
+    if (idsUsuarios.length > 0) {
+      const { data: usuarios, error: errUsuarios } = await supabase
+        .from('usuarios')
+        .select('idusuario, email, tipousuario')
+        .in('idusuario', idsUsuarios)
+      if (errUsuarios) throw new Error(errUsuarios.message)
+      usuariosPorId = Object.fromEntries((usuarios || []).map(u => [u.idusuario, u]))
+    }
+
     return {
-      publicaciones: publicaciones || [],
+      publicaciones: (publicaciones || []).map(p => ({
+        ...p,
+        usuarios: usuariosPorId[p.idusuario] || null
+      })),
       total: count || 0,
       page: Number(page),
       limit: Number(limit),

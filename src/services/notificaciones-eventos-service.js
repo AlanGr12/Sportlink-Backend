@@ -110,6 +110,31 @@ class NotificacionesEventosService {
     })
   }
 
+  // ── INVITACIONES (club/entrenador invita a un deportista a un evento) ──────
+
+  /** Al deportista: lo invitaron puntualmente a una prueba o entrenamiento. */
+  invitacionEvento(tipoActividad, idActividad, idUsuarioDestino) {
+    return this.#seguro('invitacionEvento', async () => {
+      const esPrueba = tipoActividad === 'prueba'
+      let mensaje
+      if (esPrueba) {
+        const { data } = await supabase.from('pruebas').select('categoria, clubes ( nombre ), deportes ( deporte )').eq('idprueba', idActividad).maybeSingle()
+        mensaje = `${data?.clubes?.nombre || 'Un club'} te invitó a su prueba de ${data?.deportes?.deporte || 'deporte'} (${data?.categoria || 'sin categoría'}).`
+      } else {
+        const { data } = await supabase.from('entrenamientos').select('titulo, entrenadores ( nombre, apellido ), clubes ( nombre )').eq('identrenamientos', idActividad).maybeSingle()
+        const quien = data?.clubes?.nombre || this.#nombre(data?.entrenadores) || 'Un entrenador'
+        mensaje = `${quien} te invitó a su entrenamiento "${data?.titulo || ''}".`
+      }
+      await this.repository.crearNotificacion({
+        id_usuario: idUsuarioDestino,
+        titulo: esPrueba ? 'Invitación a una prueba' : 'Invitación a un entrenamiento',
+        mensaje,
+        tipo: esPrueba ? 'PRUEBA' : 'ENTRENAMIENTO',
+        enlace: `/${esPrueba ? 'pruebas' : 'entrenamientos'}/${idActividad}`,
+      })
+    })
+  }
+
   // ── LISTA DE ESPERA (aviso al organizador) ─────────────────────────────────
 
   /** Al entrenador/club: alguien de la lista de espera pasó a estar inscripto. */

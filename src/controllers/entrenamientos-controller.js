@@ -154,6 +154,16 @@ router.put('/:id', verificarToken, requiereRol('entrenador'), upload.single('ima
   }
 })
 
+// POST /api/entrenamientos/:id/invitar — club o entrenador dueño invita a un deportista
+router.post('/:id/invitar', verificarToken, requiereRol('club', 'entrenador'), async (req, res) => {
+  try {
+    await moderacionService.invitarAEvento('entrenamiento', req.params.id, req.body.idusuario, req.usuario)
+    res.status(StatusCodes.OK).json({ mensaje: 'Invitación enviada' })
+  } catch (error) {
+    res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
+  }
+})
+
 // DELETE /api/entrenamientos/:id — dueño del recurso o administrador
 router.delete('/:id', verificarToken, async (req, res) => {
   try {
