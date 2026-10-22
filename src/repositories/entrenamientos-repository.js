@@ -19,7 +19,7 @@ function haPasado(fechaStr, horaFinStr) {
 const SELECT_ENTRENAMIENTO_QUERY = `
   *,
   deportes ( iddeporte, deporte ),
-  entrenadores ( identrenador, idusuario, nombre, apellido ),
+  entrenadores ( identrenador, idusuario, nombre, apellido, fotoperfil ),
   clubes ( idclub, idusuario, nombre, fotoperfil )
 `
 

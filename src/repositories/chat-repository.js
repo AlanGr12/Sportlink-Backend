@@ -123,7 +123,7 @@ class ChatRepository {
       .select(`
         idconversacion,
         conversaciones (
-          idconversacion, tipo, nombre, foto, updatedat,
+          idconversacion, tipo, nombre, foto, updatedat, idprueba, identrenamiento, idempleo,
           participantes_conversacion ( idusuario, usuarios ( idusuario, tipousuario ) ),
           mensajes ( idmensaje, idusuarioemisor, contenido, tipomensaje, createdat )
         )
@@ -158,6 +158,9 @@ class ChatRepository {
         tipo: conv.tipo,
         nombre: conv.nombre,
         foto: conv.foto,
+        idprueba: conv.idprueba ?? null,
+        identrenamiento: conv.identrenamiento ?? null,
+        idempleo: conv.idempleo ?? null,
         updatedat: normalizarAUtcIso(conv.updatedat),
         ultimoMensaje
       }
