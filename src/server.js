@@ -30,6 +30,7 @@ import seguidoresRoutes from './routes/seguidores-routes.js'
 import recomendacionesRoutes from './routes/recomendaciones-routes.js'
 import adjuntosRoutes from './routes/adjuntos-routes.js'
 import vinculacionesRoutes from './routes/vinculaciones-routes.js'
+import recomendacionesClubRoutes from './routes/recomendaciones-club-routes.js'
 import adminController from './controllers/admin-controller.js'
 import { iniciarRecordatorios } from './services/recordatorios-service.js'
 
@@ -65,6 +66,7 @@ app.use('/api/seguidores', seguidoresRoutes)
 app.use('/api/recomendaciones', recomendacionesRoutes)
 app.use('/api/adjuntos', adjuntosRoutes)
 app.use('/api/vinculaciones', vinculacionesRoutes)
+app.use('/api/recomendaciones-club', recomendacionesClubRoutes)
 app.use('/api/admin', adminController)
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`)

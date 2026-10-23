@@ -65,6 +65,29 @@ class ClubAnalyticsRepository {
     })
   }
 
+  /** Entrenamientos publicados por un entrenador, con el club que los respalda. */
+  async getEntrenamientosDeEntrenadorAsync(identrenador, desde) {
+    return await traerTodo(() => {
+      let q = supabase
+        .from('entrenamientos')
+        .select('identrenamientos, identrenador, titulo, precio, cantidad, estado, fechaentr, horainicio, horafin, deportes ( iddeporte, deporte ), clubes ( idclub, nombre )')
+        .eq('identrenador', identrenador)
+        .order('fechaentr', { ascending: false })
+      if (desde) q = q.gte('fechaentr', desde)
+      return q
+    })
+  }
+
+  /** Inscripciones a entrenamientos con los datos del jugador (para el panel del entrenador). */
+  async getInscripcionesConJugadorAsync(idsEntrenamiento) {
+    return await traerPorIds(idsEntrenamiento, (lote) =>
+      supabase
+        .from('inscripcionesentrenamientos')
+        .select('idinscripcionesentr, identrenamiento, idjugadorinscripto, jugadores ( idjugador, idusuario, nombre, apellido, fotoperfil, deportes ( deporte ) )')
+        .in('identrenamiento', lote)
+        .order('idinscripcionesentr'))
+  }
+
   async getInscripcionesPruebaAsync(idsPrueba) {
     return await traerPorIds(idsPrueba, (lote) =>
       supabase.from('inscripcionesprueba').select('idinscripcionesprueba, idprueba, idjugador').in('idprueba', lote).order('idinscripcionesprueba'))
