@@ -19,6 +19,9 @@ router.post('/grupal', chatController.postConversacionGrupal)
 // Listar mensajes de una conversación
 router.get('/:idconversacion/mensajes', chatController.getMensajes)
 
+// Participantes de una conversación (nombre y foto)
+router.get('/:idconversacion/participantes', chatController.getParticipantes)
+
 // Enviar un mensaje a una conversación
 router.post('/:idconversacion/mensajes', chatController.postMensaje)
 

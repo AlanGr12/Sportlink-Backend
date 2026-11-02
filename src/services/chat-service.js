@@ -153,6 +153,17 @@ class ChatService {
   }
 
   /**
+   * Participantes de una conversación (solo los ve quien participa)
+   */
+  async listarParticipantes(idconversacion, idusuario) {
+    const esPart = await chatRepository.esParticipante(idconversacion, idusuario)
+    if (!esPart) {
+      throw new Error('Acceso denegado. No perteneces a esta conversación.')
+    }
+    return await chatRepository.obtenerParticipantes(idconversacion)
+  }
+
+  /**
    * Edita el contenido de un mensaje
    */
   async editarMensaje(idconversacion, idusuarioemisor, idmensaje, contenido) {

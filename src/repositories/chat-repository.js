@@ -271,6 +271,34 @@ class ChatRepository {
   }
 
   /**
+   * Participantes de una conversación con nombre y foto de su perfil
+   */
+  async obtenerParticipantes(idconversacion) {
+    const { data, error } = await supabase
+      .from('participantes_conversacion')
+      .select('idusuario, usuarios ( tipousuario )')
+      .eq('idconversacion', idconversacion)
+    if (error) throw new Error(error.message)
+
+    const tablas = { jugador: 'jugadores', entrenador: 'entrenadores', club: 'clubes' }
+    return await Promise.all((data || []).map(async (p) => {
+      const tipousuario = p.usuarios?.tipousuario || null
+      let nombre = 'Usuario'
+      let fotoperfil = null
+      if (tablas[tipousuario]) {
+        const { data: perfil } = await supabase
+          .from(tablas[tipousuario])
+          .select('nombre, fotoperfil')
+          .eq('idusuario', p.idusuario)
+          .single()
+        if (perfil?.nombre) nombre = perfil.nombre
+        fotoperfil = perfil?.fotoperfil || null
+      }
+      return { idusuario: p.idusuario, tipousuario, nombre, fotoperfil }
+    }))
+  }
+
+  /**
    * Obtener historial de mensajes
    */
   async obtenerMensajes(idconversacion, idusuarioLogueado, limite = 50, offset = 0) {

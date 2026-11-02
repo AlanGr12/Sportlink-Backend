@@ -108,6 +108,21 @@ class ChatController {
     }
   }
 
+  // GET /api/conversaciones/:idconversacion/participantes
+  async getParticipantes(req, res) {
+    try {
+      const { idconversacion } = req.params
+      const participantes = await chatService.listarParticipantes(Number(idconversacion), req.usuario.idusuario)
+      res.status(StatusCodes.OK).json(participantes)
+    } catch (err) {
+      console.error('[chat-controller] getParticipantes error:', err)
+      const status = err.message.includes('Acceso denegado')
+        ? StatusCodes.FORBIDDEN
+        : StatusCodes.INTERNAL_SERVER_ERROR
+      res.status(status).json({ error: 'Error al obtener participantes', detail: err.message })
+    }
+  }
+
   // POST /api/conversaciones/:idconversacion/mensajes
   async postMensaje(req, res) {
     try {
