@@ -74,6 +74,17 @@ class ModeracionService {
     if (objetivo.es_admin === true) throw { status: 403, message: 'No se puede eliminar a otro administrador' }
     await moderacionRepository.eliminarUsuarioAsync(Number(id), objetivo.tipousuario)
   }
+
+  // Derecho de supresión: el usuario borra su propia cuenta (Ley 25.326, art. 16)
+  async eliminarCuentaPropia(usuario) {
+    const id = Number(usuario?.idusuario)
+    if (!id) throw { status: 401, message: 'No autenticado' }
+    let objetivo
+    try { objetivo = await usuariosRepository.getByIdAsync(id) } catch { objetivo = null }
+    if (!objetivo) throw { status: 404, message: 'Usuario no encontrado' }
+    if (objetivo.es_admin === true) throw { status: 403, message: 'Las cuentas de administrador no se pueden eliminar desde acá' }
+    await moderacionRepository.eliminarUsuarioAsync(id, objetivo.tipousuario)
+  }
 }
 
 export default new ModeracionService()

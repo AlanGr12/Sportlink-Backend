@@ -120,6 +120,18 @@ router.put('/perfil/:idusuario', verificarToken, async (req, res) => {
   }
 })
 
+// DELETE /api/login/cuenta
+// Protegida con JWT — el usuario elimina su propia cuenta y sus datos
+router.delete('/cuenta', verificarToken, async (req, res) => {
+  try {
+    await moderacionService.eliminarCuentaPropia(req.usuario)
+    res.status(StatusCodes.NO_CONTENT).send()
+  } catch (error) {
+    console.error('[ELIMINAR CUENTA ERROR]', error)
+    res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
+  }
+})
+
 // DELETE /api/usuarios/:id — solo administradores (montado en /api/usuarios en server.js)
 export const usuariosAdminRouter = Router()
 usuariosAdminRouter.delete('/:id', verificarToken, esAdmin, async (req, res) => {
