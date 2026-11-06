@@ -103,8 +103,8 @@ class ClubesRepository {
     if (args.length === 1 && typeof args[0] === 'object' && args[0] !== null) {
       params = args[0]
     } else {
-      const [idusuario, nombre, ubicacion, descripcion, fotoperfil, direccion, latitud, longitud] = args
-      params = { idusuario, nombre, ubicacion, descripcion, fotoperfil, direccion, latitud, longitud }
+      const [idusuario, nombre, ubicacion, descripcion, fotoperfil, direccion, latitud, longitud, portada] = args
+      params = { idusuario, nombre, ubicacion, descripcion, fotoperfil, direccion, latitud, longitud, portada }
     }
 
     const { data, error } = await supabase
@@ -115,6 +115,7 @@ class ClubesRepository {
         ubicacion: params.ubicacion,
         descripcion: params.descripcion,
         fotoperfil: params.fotoperfil,
+        portada: params.portada ?? null,
         direccion: params.direccion !== undefined && params.direccion !== '' ? params.direccion : null,
         latitud: (params.latitud !== undefined && params.latitud !== null && params.latitud !== '') ? Number(params.latitud) : null,
         longitud: (params.longitud !== undefined && params.longitud !== null && params.longitud !== '') ? Number(params.longitud) : null
@@ -138,6 +139,7 @@ class ClubesRepository {
     if (updates.ubicacion !== undefined) dataToUpdate.ubicacion = updates.ubicacion
     if (updates.descripcion !== undefined) dataToUpdate.descripcion = updates.descripcion
     if (updates.fotoperfil !== undefined) dataToUpdate.fotoperfil = updates.fotoperfil
+    if (updates.portada !== undefined) dataToUpdate.portada = updates.portada
 
     // Manejo defensivo de direccion, latitud y longitud
     if (updates.direccion !== undefined) {
@@ -198,8 +200,12 @@ class ClubesRepository {
     if (error) throw new Error(error.message)
   }
 
-  async subirFotoPerfilAsync(archivo) {
-    const nombreUnico = `clubes/${Date.now()}-${archivo.originalname}`
+  async subirPortadaAsync(archivo) {
+    return this.subirFotoPerfilAsync(archivo, 'portadas')
+  }
+
+  async subirFotoPerfilAsync(archivo, carpeta = 'clubes') {
+    const nombreUnico = `${carpeta}/${Date.now()}-${archivo.originalname}`
 
     const { error } = await supabase.storage
       .from('fotoPerfiles')

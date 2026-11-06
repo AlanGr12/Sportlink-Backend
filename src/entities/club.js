@@ -1,10 +1,11 @@
 class Club {
-  constructor({ idclub, idusuario, nombre, ubicacion, fotoperfil, descripcion, deportes, direccion, latitud, longitud, estado } = {}) {
+  constructor({ idclub, idusuario, nombre, ubicacion, fotoperfil, portada, descripcion, deportes, direccion, latitud, longitud, estado } = {}) {
     this.idclub = idclub
     this.idusuario = idusuario
     this.nombre = nombre
     this.ubicacion = ubicacion
     this.fotoperfil = fotoperfil
+    this.portada = portada ?? null
     this.descripcion = descripcion
     this.deportes = deportes || []
     this.direccion = direccion ?? null

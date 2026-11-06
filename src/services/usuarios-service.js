@@ -137,6 +137,16 @@ class UsuariosService {
     return url
   }
 
+  // Portada del club (foto de la entrada o instalaciones): solo clubes
+  async actualizarPortadaClubAsync(idusuario, tipousuario, archivo) {
+    if (String(tipousuario || '').toLowerCase() !== 'club') throw { status: 403, message: 'Solo los clubes tienen portada' }
+    if (!archivo) throw { status: 400, message: 'Debes enviar una imagen en el campo "portada"' }
+
+    const url = await this.repository.subirFotoPerfilAsync(archivo, 'portadas')
+    await this.repository.actualizarDatosPerfilAsync(idusuario, 'club', { portada: url })
+    return url
+  }
+
   /**
    * Actualiza biografía (tabla usuarios) y datos básicos (tabla del rol).
    * Solo se aceptan los campos editables según el tipo de usuario.

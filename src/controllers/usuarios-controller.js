@@ -84,6 +84,25 @@ router.put('/perfil/foto', verificarToken, (req, res) => {
   })
 })
 
+// PUT /api/login/perfil/portada
+// Protegida con JWT — el club autenticado cambia su portada (multipart, campo "portada")
+router.put('/perfil/portada', verificarToken, (req, res) => {
+  upload.single('portada')(req, res, async (err) => {
+    if (err) {
+      const mensaje = err.code === 'LIMIT_FILE_SIZE' ? 'La imagen no puede superar los 5 MB' : err.message
+      return res.status(StatusCodes.BAD_REQUEST).json({ error: mensaje })
+    }
+    const { idusuario, tipousuario } = req.usuario || {}
+    try {
+      const portada = await service.actualizarPortadaClubAsync(idusuario, tipousuario, req.file)
+      res.status(StatusCodes.OK).json({ mensaje: 'Portada actualizada correctamente', portada })
+    } catch (error) {
+      if (!error.status) console.error('[ACTUALIZAR PORTADA ERROR]', error)
+      res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
+    }
+  })
+})
+
 // GET /api/login/perfil/:idusuario
 // Protegida con JWT — consulta de perfil con biografia incluida
 router.get('/perfil/:idusuario', verificarToken, async (req, res) => {

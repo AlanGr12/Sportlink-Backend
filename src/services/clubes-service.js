@@ -35,7 +35,7 @@ class ClubesService {
     return this.verificarVisibilidad(club, id, solicitante)
   }
 
-  async registrarClubAsync(data, archivo) {
+  async registrarClubAsync(data, archivo, archivoPortada) {
     if (typeof data.deportes === 'string') {
       data.deportes = JSON.parse(data.deportes)
     }
@@ -53,10 +53,15 @@ class ClubesService {
       }
     }
 
+    if (!archivoPortada) {
+      throw { status: 400, message: 'La portada del club (foto de la entrada o instalaciones) es obligatoria' }
+    }
+
     let urlFoto = null
     if (archivo) {
       urlFoto = await this.repository.subirFotoPerfilAsync(archivo)
     }
+    const urlPortada = await this.repository.subirPortadaAsync(archivoPortada)
 
     const usuario = await this.usuariosRepository.crearUsuarioAsync(
       data.email,
@@ -76,7 +81,8 @@ class ClubesService {
       urlFoto,
       direccion,
       latitud,
-      longitud
+      longitud,
+      urlPortada
     )
 
     for (const iddeporte of data.deportes) {
@@ -89,11 +95,11 @@ class ClubesService {
     return club
   }
 
-  async crearClubAsync(data, archivo) {
-    return await this.registrarClubAsync(data, archivo)
+  async crearClubAsync(data, archivo, archivoPortada) {
+    return await this.registrarClubAsync(data, archivo, archivoPortada)
   }
 
-  async actualizarPerfilClubAsync(id, data = {}, archivo) {
+  async actualizarPerfilClubAsync(id, data = {}, archivo, archivoPortada) {
     if (!id) throw { status: 400, message: 'El id del club es obligatorio' }
 
     let urlFoto = data.fotoperfil
@@ -102,6 +108,7 @@ class ClubesService {
     }
 
     const updates = {}
+    if (archivoPortada) updates.portada = await this.repository.subirPortadaAsync(archivoPortada)
     if (data.nombre !== undefined) updates.nombre = data.nombre
     if (data.ubicacion !== undefined) updates.ubicacion = data.ubicacion
     if (data.descripcion !== undefined) updates.descripcion = data.descripcion

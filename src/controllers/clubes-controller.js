@@ -103,10 +103,16 @@ router.get('/:id', autenticacionOpcional, async (req, res) => {
   }
 })
 
-// POST /api/clubes/registro
-router.post('/registro', upload.single('fotoperfil'), async (req, res) => {
+// Logo (fotoperfil) y portada (entrada o instalaciones), ambos opcionales a nivel multer
+const subidaClub = upload.fields([
+  { name: 'fotoperfil', maxCount: 1 },
+  { name: 'portada', maxCount: 1 }
+])
+
+// POST /api/clubes/registro (la portada es obligatoria)
+router.post('/registro', subidaClub, async (req, res) => {
   try {
-    const club = await service.registrarClubAsync(req.body, req.file)
+    const club = await service.registrarClubAsync(req.body, req.files?.fotoperfil?.[0], req.files?.portada?.[0])
     res.status(StatusCodes.CREATED).json(club)
   } catch (error) {
     res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
@@ -134,7 +140,7 @@ const handlerActualizarClub = async (req, res) => {
       longitud: longitud === '' ? null : longitud
     }
 
-    const club = await service.actualizarPerfilClubAsync(req.params.id, payload, req.file)
+    const club = await service.actualizarPerfilClubAsync(req.params.id, payload, req.files?.fotoperfil?.[0], req.files?.portada?.[0])
     res.status(StatusCodes.OK).json(club)
   } catch (error) {
     res.status(error.status || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message })
@@ -151,9 +157,9 @@ router.get('/:id/entrenadores', async (req, res) => {
 })
 
 // PUT /api/clubes/:id
-router.put('/:id', verificarToken, soloDuenioDelClub, upload.single('fotoperfil'), handlerActualizarClub)
+router.put('/:id', verificarToken, soloDuenioDelClub, subidaClub, handlerActualizarClub)
 
 // PUT /api/clubes/perfil/:id
-router.put('/perfil/:id', verificarToken, soloDuenioDelClub, upload.single('fotoperfil'), handlerActualizarClub)
+router.put('/perfil/:id', verificarToken, soloDuenioDelClub, subidaClub, handlerActualizarClub)
 
 export default router
