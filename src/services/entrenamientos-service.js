@@ -5,6 +5,7 @@ import CalendarioEventosService from './calendarioeventos-service.js'
 import chatRepository from '../repositories/chat-repository.js'
 import eventos from './notificaciones-eventos-service.js'
 import VinculacionesRepository from '../repositories/vinculaciones-repository.js'
+import moderacionRepository from '../repositories/moderacion-repository.js'
 
 export const MAX_TITULO_ENTRENAMIENTO = 45
 
@@ -234,6 +235,13 @@ class EntrenamientosService {
       ubicacion, fechaentr, horainicio, horafin, estado, descripcion,
       genero, nivel, direccion, latitud, longitud
     } = data || {}
+
+    // Solo el entrenador dueño puede editar el entrenamiento
+    const duenio = await moderacionRepository.getDuenioEntrenamientoAsync(id)
+    if (duenio === undefined) throw { status: 404, message: `No se encontró el entrenamiento con id ${id}` }
+    if (Number(duenio) !== Number(idusuario)) {
+      throw { status: 403, message: 'No tenés permiso para editar este entrenamiento' }
+    }
 
     if (titulo !== undefined) validarTitulo(titulo)
 

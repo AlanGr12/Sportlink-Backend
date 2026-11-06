@@ -4,6 +4,7 @@ import ClubesRepository from '../repositories/clubes-repository.js'
 import CalendarioEventosService from './calendarioeventos-service.js'
 import chatRepository from '../repositories/chat-repository.js'
 import eventos from './notificaciones-eventos-service.js'
+import moderacionRepository from '../repositories/moderacion-repository.js'
 
 class PruebasService {
   constructor() {
@@ -211,22 +212,42 @@ class PruebasService {
       longitud
     } = data || {}
 
-    if (fechaprueba) {
-      const d = new Date()
-      const hoy = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-      const fechaPruebaLimpia = String(fechaprueba).substring(0, 10)
-      if (fechaPruebaLimpia < hoy) {
-        throw { status: 400, message: 'La fecha de la prueba no puede ser anterior a la fecha actual' }
-      }
+    // Solo el club dueño puede editar la prueba
+    const duenio = await moderacionRepository.getDuenioPruebaAsync(id)
+    if (duenio === undefined) throw { status: 404, message: `No se encontró la prueba con id ${id}` }
+    if (Number(duenio) !== Number(idusuario)) {
+      throw { status: 403, message: 'No tenés permiso para editar esta prueba' }
+    }
+
+    const actual = await this.repository.getByIdAsync(id)
+    // La prueba no se puede pasar a otro club
+    if (idclub !== undefined && Number(idclub) !== Number(actual?.club?.idclub)) {
+      throw { status: 400, message: 'No se puede cambiar el club de una prueba' }
+    }
+
+    const d = new Date()
+    const hoy = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const fechaPruebaFinal = String(fechaprueba || actual?.fechaprueba || '').substring(0, 10)
+    const fechaCierreFinal = String(fechacierre || actual?.fechacierre || '').substring(0, 10)
+    if (fechaprueba && fechaPruebaFinal < hoy) {
+      throw { status: 400, message: 'La fecha de la prueba no puede ser anterior a la fecha actual' }
+    }
+    if (fechacierre && fechaCierreFinal < hoy) {
+      throw { status: 400, message: 'La fecha de cierre de inscripción no puede ser anterior a la fecha actual' }
+    }
+    if (fechaPruebaFinal && fechaCierreFinal && fechaCierreFinal > fechaPruebaFinal) {
+      throw { status: 400, message: 'La fecha de cierre de inscripción no puede ser posterior a la fecha de la prueba' }
+    }
+    if (cupo !== undefined && (!Number.isInteger(Number(cupo)) || Number(cupo) < 1)) {
+      throw { status: 400, message: 'El cupo debe ser un número entero mayor a 0' }
+    }
+    if (horainicio && horafin && String(horafin) <= String(horainicio)) {
+      throw { status: 400, message: 'La hora de fin debe ser posterior a la de inicio' }
     }
 
     // Si cambia el deporte, debe seguir siendo uno de los del club
-    if (iddeporte !== undefined) {
-      const actual = await this.repository.getByIdAsync(id)
-      if (actual && Number(actual.iddeporte) !== Number(iddeporte)) {
-        const club = idclub !== undefined ? Number(idclub) : Number(actual.idclub)
-        verificarDeporteAutorizado(iddeporte, await this.clubesRepo.getIdsDeportesAsync(club), 'club')
-      }
+    if (iddeporte !== undefined && Number(actual?.deporte?.iddeporte) !== Number(iddeporte)) {
+      verificarDeporteAutorizado(iddeporte, await this.clubesRepo.getIdsDeportesAsync(Number(actual?.club?.idclub)), 'club')
     }
 
     let estadoBool = undefined
@@ -244,7 +265,6 @@ class PruebasService {
     }
 
     const updates = {
-      ...(idclub !== undefined && { idclub: Number(idclub) }),
       ...(iddeporte !== undefined && { iddeporte: Number(iddeporte) }),
       ...(cupo !== undefined && { cupo: Number(cupo) }),
       ...(horainicio !== undefined && { horainicio }),
