@@ -6,6 +6,16 @@ import chatRepository from '../repositories/chat-repository.js'
 import eventos from './notificaciones-eventos-service.js'
 import VinculacionesRepository from '../repositories/vinculaciones-repository.js'
 
+export const MAX_TITULO_ENTRENAMIENTO = 45
+
+const validarTitulo = (titulo) => {
+  const limpio = String(titulo ?? '').trim()
+  if (!limpio) throw { status: 400, message: 'El título es obligatorio' }
+  if (limpio.length > MAX_TITULO_ENTRENAMIENTO) {
+    throw { status: 400, message: `El título no puede superar los ${MAX_TITULO_ENTRENAMIENTO} caracteres` }
+  }
+}
+
 class EntrenamientosService {
   constructor() {
     this.repository = new EntrenamientosRepository()
@@ -101,7 +111,7 @@ class EntrenamientosService {
     if (!identrenador) throw { status: 400, message: 'El entrenador es obligatorio' }
     if (precio == null) throw { status: 400, message: 'El precio es obligatorio' }
     if (cantidad == null) throw { status: 400, message: 'La cantidad es obligatoria' }
-    if (!titulo) throw { status: 400, message: 'El título es obligatorio' }
+    validarTitulo(titulo)
     if (!ubicacion) throw { status: 400, message: 'La ubicación es obligatoria' }
     if (!fechaentr) throw { status: 400, message: 'La fecha es obligatoria' }
     if (estado == null) throw { status: 400, message: 'El estado es obligatorio' }
@@ -224,6 +234,8 @@ class EntrenamientosService {
       ubicacion, fechaentr, horainicio, horafin, estado, descripcion,
       genero, nivel, direccion, latitud, longitud
     } = data || {}
+
+    if (titulo !== undefined) validarTitulo(titulo)
 
     if (fechaentr) {
       const d = new Date()

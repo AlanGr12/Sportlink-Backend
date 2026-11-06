@@ -12,9 +12,9 @@ export async function chatAgente(req, res) {
       return res.status(400).json({ error: 'El campo "mensaje" es obligatorio y debe ser texto.' });
     }
 
-    const { texto, historial: historialActualizado } = await procesarMensajeAgente(mensaje.trim(), historial || []);
+    const { texto, eventos, historial: historialActualizado } = await procesarMensajeAgente(mensaje.trim(), Array.isArray(historial) ? historial : []);
     
-    return res.json({ respuesta: texto, historial: historialActualizado });
+    return res.json({ respuesta: texto, eventos, historial: historialActualizado });
   } catch (error) {
     console.error('Error en chatAgente:', error);
     return res.status(500).json({ error: 'Error al procesar la solicitud con IA.', detalles: error.message });
